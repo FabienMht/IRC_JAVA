@@ -1,4 +1,5 @@
 import javafx.application.Application;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -7,7 +8,10 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+
+import java.io.File;
 
 public class ClientGui extends Application {
 
@@ -32,6 +36,8 @@ public class ClientGui extends Application {
     private MenuItem itemLicence = new MenuItem("Licence");
     private MenuItem itemQuitter = new MenuItem("Quitter");
 
+    ClientModel model=new ClientModel();
+
     public static void main(String[] args) {
         // TODO Auto-generated method stub
         launch(args);
@@ -51,7 +57,6 @@ public class ClientGui extends Application {
         menuBar.getMenus().addAll(menuFichier,menuAide);
 
         // Dec
-        textAreaMsg.setText("New Text");
         textAreaMsg.setEditable(false);
         textAreaMsg.setPrefHeight(500);
         textAreaMsg.setPrefWidth(600);
@@ -102,7 +107,6 @@ public class ClientGui extends Application {
 
         vboxAll.getChildren().addAll(menuBar,hboxInput,hboxCore);
 
-        ClientModel model=new ClientModel();
         ClientController controlleur = new ClientController(this,model,primaryStage);
 
         Scene scene = new Scene(vboxAll,1000,800);
@@ -196,6 +200,34 @@ public class ClientGui extends Application {
         stageLicence.setTitle("Licence");
         stageLicence.setResizable(true);
         stageLicence.show();
+
+    }
+
+    public File showMsgSaver(Stage stage){
+
+        FileChooser fileChooser = new FileChooser();
+
+        //Set extension filter
+        FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt");
+        fileChooser.getExtensionFilters().add(extFilter);
+
+        //Show save file dialog
+        File file = fileChooser.showSaveDialog(stage);
+
+        return file;
+
+    }
+
+    public void majClientSalon (){
+
+        getListView(1).setItems(FXCollections.observableList(model.getClients()));
+        getListView(0).setItems(FXCollections.observableList(model.getSalons()));
+
+    }
+    public void clearClientSalon (){
+
+        getListView(1).getItems().clear();
+        getListView(0).getItems().clear();
 
     }
 

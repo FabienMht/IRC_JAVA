@@ -1,3 +1,8 @@
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -5,9 +10,10 @@ public class ClientModel {
 
     private ArrayList<String> clientsList=new ArrayList<String>();
     private ArrayList<String> salonsList=new ArrayList<String>();
-    private String ipAddress=null;
-    private Integer port=null;
     private String nickname=null;
+    private InetSocketAddress hostAddress=null;
+    private SocketChannel clientSocket=null;
+    private Selector selector=null;
 
     public ClientModel (){
 
@@ -31,12 +37,38 @@ public class ClientModel {
         nickname=name;
     }
 
-    public String getIpAddress (){
-        return ipAddress;
+    public InetAddress getIpAddress (){
+        return hostAddress.getAddress();
     }
     public Integer getPort (){
-        return port;
+        return hostAddress.getPort();
     }
+
+    public void setIpPort(String ip,Integer port){
+
+        try {
+            InetAddress ipAddr = InetAddress.getByName(ip);
+            hostAddress = new InetSocketAddress(ipAddr, port);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public SocketChannel getClientSocket (){
+        return clientSocket;
+    }
+    public void setClientSocket (SocketChannel a){
+        this.clientSocket=a;
+    }
+
+    public Selector getSelector (){
+        return selector;
+    }
+    public void setSelector (Selector a){
+        this.selector=a;
+    }
+
     public String getNickname (){
         return nickname;
     }
@@ -53,10 +85,8 @@ public class ClientModel {
 
     public boolean checkName(String name){
 
-        //Getting Iterator
         Iterator itr=clientsList.iterator();
 
-        //traversing elements of ArrayList object
         while(itr.hasNext()){
 
             String st=(String) itr.next();
