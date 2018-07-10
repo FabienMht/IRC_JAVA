@@ -6,7 +6,7 @@ public class ServerLog {
     private ServerGui gui;
     private int i;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("E, dd MMM hh:mm:ss");
-    public enum Level { DEBUG, INFO , ERROR}
+    public enum Level { DEBUG, INFO , WARNING , ERROR}
     public enum Facility { CLIENT, SERVER, OTHER }
     private Level logLevel;
     private Facility logFacility;
@@ -34,6 +34,13 @@ public class ServerLog {
 
         switch(level)
         {
+            case WARNING:
+                if (this.getLogLevel().equals(Level.WARNING) || this.getLogLevel().equals(Level.INFO) || this.getLogLevel().equals(Level.DEBUG)){
+                    affiche=true;
+                } else {
+                    affiche=false;
+                }
+                break;
             case INFO:
                 if (this.getLogLevel().equals(Level.INFO) || this.getLogLevel().equals(Level.DEBUG)){
                     affiche=true;
