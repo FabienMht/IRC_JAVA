@@ -64,6 +64,14 @@ public class ServerGui extends Application {
 
         menuBar.getMenus().addAll(menuFichier,menuView,menuAide);
 
+        getBoutton(0).setDisable(false);
+        getBoutton(1).setDisable(true);
+        getBoutton(2).setDisable(true);
+        getBoutton(3).setDisable(true);
+        getBoutton(4).setDisable(true);
+        getBoutton(5).setDisable(true);
+        getBoutton(6).setDisable(true);
+
         // Dec
         textAreaLog.setEditable(false);
         textAreaLog.setPrefHeight(500);
@@ -243,6 +251,8 @@ public class ServerGui extends Application {
         vboxBlacklist.getChildren().addAll(listBlacklist,butDeleteBlacklist);
         vboxBlacklist.setPadding(new Insets(10, 10, 10, 10));
         vboxBlacklist.setAlignment(Pos.CENTER);
+
+        listBlacklist.setItems(FXCollections.observableList(model.getBlackList()));
 
         Scene sceneBlacklist = new Scene(vboxBlacklist,300,300);
 

@@ -56,10 +56,15 @@ public class ClientGui extends Application {
 
         menuBar.getMenus().addAll(menuFichier,menuAide);
 
+        butDisconnect.setDisable(true);
+        butSend.setDisable(true);
+        butSalon.setDisable(true);
+
         // Dec
         textAreaMsg.setEditable(false);
         textAreaMsg.setPrefHeight(500);
         textAreaMsg.setPrefWidth(600);
+        textMsg.setPrefWidth(500);
 
         Label labelIP = new Label("IP :");
         Label labelPort = new Label("Port :");
@@ -75,7 +80,7 @@ public class ClientGui extends Application {
         HBox hboxInput = new HBox(10);
         hboxInput.setAlignment(Pos.CENTER);
 
-        HBox hboxCore = new HBox(15);
+        HBox hboxCore = new HBox(5);
         hboxCore.setAlignment(Pos.CENTER);
         hboxCore.setPadding(new Insets(0, 15, 0, 15));
 
@@ -181,9 +186,6 @@ public class ClientGui extends Application {
     public void setTextMsg(String a){
         textAreaMsg.appendText(a);
     }
-    public void cleanTextMsg(){
-        textAreaMsg.clear();
-    }
 
     public void setLicenceWindow(){
 
@@ -218,12 +220,17 @@ public class ClientGui extends Application {
 
     }
 
-    public void majClientSalon (){
+    public void majClient (){
 
         getListView(1).setItems(FXCollections.observableList(model.getClients()));
+
+    }
+    public void majSalon (){
+
         getListView(0).setItems(FXCollections.observableList(model.getSalons()));
 
     }
+
     public void clearClientSalon (){
 
         getListView(1).getItems().clear();

@@ -91,6 +91,8 @@ public class ServerController {
                 gui.getTextField(0).setText("127.0.0.1");
                 gui.getTextField(1).setText("27001");
 
+                //boolean isValid = InetAddresses.isInetAddress("1.2.3.4");
+
                 try {
                     model.setIpPort(gui.getTextField(0).getText(), Integer.parseInt(gui.getTextField(1).getText()));
 
@@ -100,14 +102,21 @@ public class ServerController {
                 }
 
                 log.setLogContent("Demarrage du serveur !", ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+
                 ServerCompute compute=new ServerCompute(log,model,gui);
                 compute.start();
-                model.setSalons("Principal");
-                model.setSalons("Principal2");
-                model.setSalons("Principal3");
 
-                gui.getTableView().setItems(FXCollections.observableList(model.getClients()));
-                gui.getListView(0).setItems(FXCollections.observableList(model.getSalons()));
+                model.setSalons("Principal");
+
+                gui.getBoutton(0).setDisable(true);
+                gui.getBoutton(1).setDisable(false);
+                gui.getBoutton(2).setDisable(false);
+                gui.getBoutton(3).setDisable(false);
+                gui.getBoutton(4).setDisable(false);
+                gui.getBoutton(5).setDisable(false);
+                gui.getBoutton(6).setDisable(false);
+
+                gui.majClientSalon();
 
             }
         });
@@ -119,17 +128,12 @@ public class ServerController {
 
                 log.setLogContent("Arret du serveur !",ServerLog.Level.INFO,ServerLog.Facility.SERVER);
 
-                Iterator itr=model.getClients().iterator();
+                ServerCompute.sendMsg("/quit",model.getClients());
 
-                while(itr.hasNext()){
-
-                    ServerClients st=(ServerClients)itr.next();
-
-                    try {
-                        st.getSocketChannel().close();
-                    } catch (IOException e) {
-                        log.setLogContent("Echec de l arret du socket channel !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
-                    }
+                try {
+                    model.deleteClients(model.getClients());
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
 
                 try {
@@ -139,12 +143,21 @@ public class ServerController {
                 }
 
                 try {
+                    //model.getSelector().selectedKeys().clear();
                     model.getSelector().close();
                 } catch (IOException e) {
                     log.setLogContent("Echec de l arret du selecteur !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
                 }
 
                 gui.clearClientSalon();
+
+                gui.getBoutton(0).setDisable(false);
+                gui.getBoutton(1).setDisable(true);
+                gui.getBoutton(2).setDisable(true);
+                gui.getBoutton(3).setDisable(true);
+                gui.getBoutton(4).setDisable(true);
+                gui.getBoutton(5).setDisable(true);
+                gui.getBoutton(6).setDisable(true);
             }
         });
 
@@ -153,8 +166,19 @@ public class ServerController {
             public void handle(ActionEvent event) {
                 log.setLogContent("Deconnection client !",ServerLog.Level.INFO,ServerLog.Facility.SERVER);
 
-                model.deleteClients((ServerClients) gui.getTableView().getSelectionModel().getSelectedItem());
-                gui.getTableView().setItems(FXCollections.observableList(model.getClients()));
+                ServerClients client=(ServerClients) gui.getTableView().getSelectionModel().getSelectedItem();
+
+                ServerCompute.sendMsg("/quit",client.getSocketChannel());
+
+                ServerCompute.sendMsg("/deleteClient " + client.getNickname(),model.getClients(client.getSalon()),client.getSocketChannel());
+
+                try {
+                    model.deleteClients(client);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                gui.majClientSalon();
             }
         });
 
@@ -163,55 +187,80 @@ public class ServerController {
             public void handle(ActionEvent event) {
                 log.setLogContent("Deconnection tous les client!",ServerLog.Level.INFO,ServerLog.Facility.SERVER);
 
-                model.deleteAllClients();
-                gui.getTableView().getItems().clear();
-                gui.getTableView().setItems(FXCollections.observableList(model.getClients()));
-            }
-        });
-
-        gui.getBoutton(4).setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                log.setLogContent("Client est banni!",ServerLog.Level.INFO,ServerLog.Facility.SERVER);
-                model.setBlackList(((ServerClients) gui.getTableView().getSelectionModel().getSelectedItem()).getIpAddress());
-                model.deleteClients((ServerClients) gui.getTableView().getSelectionModel().getSelectedItem());
-                gui.getTableView().setItems(FXCollections.observableList(model.getClients()));
-                gui.getListView(1).setItems(FXCollections.observableList(model.getBlackList()));
-            }
-        });
-
-        gui.getBoutton(5).setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                log.setLogContent("Salon supp !",ServerLog.Level.INFO,ServerLog.Facility.SERVER);
-
-                String salonSupp=gui.getListView(0).getSelectionModel().getSelectedItem().toString();
-
                 Iterator itr=model.getClients().iterator();
 
                 while(itr.hasNext()){
 
                     ServerClients st=(ServerClients)itr.next();
 
-                    if (salonSupp==st.getSalon()) {
-                        try {
-                            st.getSocketChannel().close();
-                        } catch (IOException e) {
-                            log.setLogContent("Echec de l arret du socket channel !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
-                        }
+                    ServerCompute.sendMsg("/quit",st.getSocketChannel());
+
+                    try {
+                        model.deleteClients(st);
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
+
+                }
+
+                gui.majClientSalon();
+            }
+        });
+
+        gui.getBoutton(4).setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+
+                ServerClients client=(ServerClients) gui.getTableView().getSelectionModel().getSelectedItem();
+
+                log.setLogContent("Client est banni : " + client.getNickname(),ServerLog.Level.INFO,ServerLog.Facility.SERVER);
+
+                ServerCompute.sendMsg("/quit",client.getSocketChannel());
+                ServerCompute.sendMsg("/deleteClient " + client.getNickname(),model.getClients(client.getSalon()),client.getSocketChannel());
+
+                model.setBlackList(client.getIpAddress());
+
+                try {
+                    model.deleteClients(client);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                gui.majClientSalon();
+            }
+        });
+
+        gui.getBoutton(5).setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+
+                String salonSupp=gui.getListView(0).getSelectionModel().getSelectedItem().toString();
+
+                log.setLogContent("Salon supp : " + salonSupp,ServerLog.Level.INFO,ServerLog.Facility.SERVER);
+
+                ServerCompute.sendMsg("/quit",model.getClients(salonSupp));
+
+                try {
+                    model.deleteClients(model.getClients(salonSupp));
+                } catch (IOException e) {
+                    log.setLogContent("Echec de l arret du socket channel !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
                 }
 
                 model.deleteSalons(salonSupp);
-                gui.getListView(0).setItems(FXCollections.observableList(model.getSalons()));
+                gui.majClientSalon();
             }
         });
 
         gui.getBoutton(6).setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent event) {
-                log.setLogContent("Supp client Blacklist !", ServerLog.Level.INFO, ServerLog.Facility.SERVER);
-                model.deleteBlackListClient(gui.getListView(1).getSelectionModel().getSelectedItem().toString());
+
+                String clientBlacklistSupp=gui.getListView(1).getSelectionModel().getSelectedItem().toString();
+
+                log.setLogContent("Supp client Blacklist : " + clientBlacklistSupp, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+
+                model.deleteBlackListClient(clientBlacklistSupp);
+
                 gui.getListView(1).setItems(FXCollections.observableList(model.getBlackList()));
             }
         });

@@ -11,6 +11,7 @@ public class ClientModel {
     private ArrayList<String> clientsList=new ArrayList<String>();
     private ArrayList<String> salonsList=new ArrayList<String>();
     private String nickname=null;
+    private String salonWork=null;
     private InetSocketAddress hostAddress=null;
     private SocketChannel clientSocket=null;
     private Selector selector=null;
@@ -27,11 +28,20 @@ public class ClientModel {
         return salonsList;
     }
 
+    public String getSalonWork(){
+        return salonWork;
+    }
+
     public void setClients(String nickname){
         clientsList.add(nickname);
     }
+
     public void setSalons(String salon){
         salonsList.add(salon);
+    }
+
+    public void setSalonWork(String salon){
+        this.salonWork=salon;
     }
     public void setNickname(String name){
         nickname=name;
@@ -83,9 +93,25 @@ public class ClientModel {
         salonsList.remove(name);
     }
 
-    public boolean checkName(String name){
+    public boolean checkNickname(String name){
 
         Iterator itr=clientsList.iterator();
+
+        while(itr.hasNext()){
+
+            String st=(String) itr.next();
+
+            if(st==name){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean checkSalon(String name){
+
+        Iterator itr=salonsList.iterator();
 
         while(itr.hasNext()){
 

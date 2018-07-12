@@ -1,4 +1,4 @@
-import javafx.collections.FXCollections;
+import javafx.application.Platform;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -34,9 +34,7 @@ public class ClientCompute extends Thread {
             model.setClientSocket(clientSocket);
             model.setSelector(selector);
 
-            ClientCompute.sendMsg("/setNickname" + gui.getTextField(2).getText(),model.getClientSocket());
-            ClientCompute.sendMsg("/getSalon",model.getClientSocket());
-            ClientCompute.sendMsg("/getNickname Principal",model.getClientSocket());
+            ClientCompute.sendMsg("/setNickname " + gui.getTextField(2).getText(),model.getClientSocket());
 
             while (true) {
 
@@ -62,6 +60,8 @@ public class ClientCompute extends Thread {
 
                             System.out.println(output);
 
+                            model.deleteAllClients();
+
                             String outputPrefix = new String(output.replaceFirst("/listClient","")).trim();
 
                             String[] listClient=outputPrefix.split(",");
@@ -70,7 +70,7 @@ public class ClientCompute extends Thread {
                                 model.setClients(s);
                             }
 
-                            gui.majClientSalon();
+                            gui.majClient();
                         }
 
                         else if (output.startsWith("/listSalon",0)) {
@@ -85,68 +85,80 @@ public class ClientCompute extends Thread {
                                 model.setSalons(s);
                             }
 
-                            gui.majClientSalon();
+                            gui.majSalon();
 
-                        }
+                        } else if (output.startsWith("/addClient",0)) {
 
-                        /*else if (output.startsWith("/getSalon",0)) {
+                            System.out.println(output);
 
-                            String salonFormat=model.getSalonsFormat();
-                            byte[] message = salonFormat.getBytes();
-                            ByteBuffer bufferClient = ByteBuffer.wrap(message);
-                            client.write(bufferClient);
+                            String outputPrefix = new String(output.replaceFirst("/addClient","")).trim();
 
-                            System.out.println(salonFormat);
+                            model.setClients(outputPrefix);
 
-                            bufferClient.clear();
+                            gui.majClient();
 
-                        }
+                        } else if (output.startsWith("/deleteClient",0)) {
 
-                        else if (output.startsWith("/setSalon",0)) {
+                            System.out.println(output);
 
-                            String outputPrefix = new String(output.replaceFirst("/setSalon","")).trim();
-                            String ancienSalon=model.getClients(client).getSalon();
+                            String outputPrefix = new String(output.replaceFirst("/deleteClient","")).trim();
 
-                            model.getClients(client).setSalon(outputPrefix);
-                            gui.getTableView().setItems(FXCollections.observableList(model.getClients()));
+                            model.deleteClients(outputPrefix);
 
-                            log.setLogContent("Nouveau salon pour " + model.getClients(client).getNickname() + " -> Ancien : " + ancienSalon + " Nouveau : " + outputPrefix, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
-                        }
+                            gui.majClient();
 
-                        else if (output.startsWith("/addSalon",0)) {
+                        } else if (output.startsWith("/addSalon",0)) {
+
+                            System.out.println(output);
 
                             String outputPrefix = new String(output.replaceFirst("/addSalon","")).trim();
 
                             model.setSalons(outputPrefix);
-                            gui.getListView(0).setItems(FXCollections.observableList(model.getSalons()));
-                            log.setLogContent("Ajout salon " + outputPrefix + " par " + model.getClients(client).getNickname(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
-                        }
 
-                        else if (output.startsWith("/quit",0)) {
+                            gui.majSalon();
 
-                            log.setLogContent("Decconnection client : " + model.getClients(client).getNickname(), ServerLog.Level.WARNING, ServerLog.Facility.SERVER);
-                            client.close();
-                            model.deleteClients(model.getClients(client));
-                            gui.getTableView().setItems(FXCollections.observableList(model.getClients()));
-                        }
+                        } else if (output.startsWith("/deleteSalon",0)) {
 
-                        else {
-                            String salonWrite=model.getSalons(client);
+                            System.out.println(output);
 
-                            Iterator itrClientSalon=model.getClients(salonWrite).iterator();
+                            String outputPrefix = new String(output.replaceFirst("/deleteSalon","")).trim();
 
-                            byte [] message = output.getBytes();
-                            ByteBuffer bufferBroadcast = ByteBuffer.wrap(message);
+                            model.deleteSalons(outputPrefix);
 
-                            while(itrClientSalon.hasNext()){
+                            gui.majSalon();
 
-                                ServerClients st=(ServerClients)itrClientSalon.next();
+                        } else if (output.startsWith("/quit",0)) {
 
-                                st.getSocketChannel().write(bufferBroadcast);
+                            System.out.println(output);
+
+                            try {
+                                model.getClientSocket().close();
+                            } catch (IOException e) {
                             }
 
-                            bufferBroadcast.clear();
-                        }*/
+                            try {
+                                model.getSelector().close();
+                            } catch (IOException e) {
+                            }
+
+                            Platform.runLater(new Runnable() {
+                                @Override public void run() {
+                                    gui.clearClientSalon();
+                                    gui.getAreaMsg().clear();
+                                    gui.getBoutton(0).setDisable(false);
+                                    gui.getBoutton(1).setDisable(true);
+                                    gui.getBoutton(2).setDisable(true);
+                                    gui.getBoutton(3).setDisable(true);
+                                }
+                            });
+
+
+                        } else {
+
+                            String outputPrefix = new String(output).trim();
+                            gui.setTextMsg(outputPrefix);
+                            gui.setTextMsg("\n");
+                        }
 
                     }
                     itr.remove();

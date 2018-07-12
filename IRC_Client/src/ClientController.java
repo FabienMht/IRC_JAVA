@@ -1,6 +1,9 @@
-import javafx.collections.FXCollections;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import java.io.File;
 import java.io.FileWriter;
@@ -11,7 +14,6 @@ public class ClientController {
     private ClientGui gui;
     private ClientModel model;
     private Stage stage;
-
 
     public ClientController(ClientGui a, ClientModel b,Stage c){
         this.gui=a;
@@ -25,14 +27,12 @@ public class ClientController {
         // Action event.
 
         gui.getMenuItems(0).setOnAction(new EventHandler<ActionEvent>() {
-            @Override
             public void handle(ActionEvent event) { ;
                 System.exit(0);
             }
         });
 
         gui.getMenuItems(1).setOnAction(new EventHandler<ActionEvent>() {
-            @Override
             public void handle(ActionEvent event) {
 
                 File file=null;
@@ -50,14 +50,13 @@ public class ClientController {
         });
 
         gui.getMenuItems(4).setOnAction(new EventHandler<ActionEvent>() {
-            @Override
             public void handle(ActionEvent event) {
+
                 gui.setLicenceWindow();
             }
         });
 
         gui.getBoutton(0).setOnAction(new EventHandler<ActionEvent>() {
-            @Override
             public void handle(ActionEvent event) {
 
                 gui.getTextField(0).setText("127.0.0.1");
@@ -70,53 +69,154 @@ public class ClientController {
                     return;
                 }
 
+                model.setNickname(gui.getTextField(2).getText());
+
                 ClientCompute compute=new ClientCompute(model,gui);
                 compute.start();
 
-                gui.majClientSalon();
+                gui.getBoutton(0).setDisable(true);
+                gui.getBoutton(1).setDisable(false);
+                gui.getBoutton(2).setDisable(false);
+                gui.getBoutton(3).setDisable(false);
+
+                gui.majClient();
+                gui.majSalon();
 
             }
         });
 
         gui.getBoutton(1).setOnAction(new EventHandler<ActionEvent>() {
-
-            @Override
             public void handle(ActionEvent event) {
-
-                try {
-                    model.getClientSocket().close();
-                } catch (IOException e) {
-                }
-
-                try {
-                    model.getSelector().close();
-                } catch (IOException e) {
-                }
-
-                ClientCompute.sendMsg("/quit",model.getClientSocket());
-                gui.clearClientSalon();
+                disconnect();
             }
         });
 
         gui.getBoutton(2).setOnAction(new EventHandler<ActionEvent>() {
-
-            @Override
             public void handle(ActionEvent event) {
 
-                model.setSalons(gui.getTextField(0).getText());
-                ClientCompute.sendMsg("/addSalon " + gui.getTextField(3).getText(),model.getClientSocket());
-                gui.majClientSalon();
+                if(model.checkSalon(gui.getTextField(3).getText())) {
+                    model.setSalons(gui.getTextField(3).getText());
+                    ClientCompute.sendMsg("/addSalon " + gui.getTextField(3).getText(),model.getClientSocket());
+                    gui.majSalon();
+                } else {
+
+                }
+
             }
         });
 
         gui.getBoutton(3).setOnAction(new EventHandler<ActionEvent>() {
-
-            @Override
             public void handle(ActionEvent event) {
-
-                ClientCompute.sendMsg(gui.getTextField(4).getText(),model.getClientSocket());
+                sendMsg();
+                gui.getTextField(0).clear();
             }
         });
+
+        gui.getTextField(4).setOnKeyPressed(new EventHandler<KeyEvent>() {
+            public void handle(KeyEvent ke)
+            {
+                if(gui.getBoutton(0).isDisable()) {
+                    if (ke.getCode().equals(KeyCode.ENTER)) {
+                        sendMsg();
+                        gui.getTextField(0).clear();
+                    }
+                }
+            }
+        });
+
+        gui.getListView(0).getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
+                    public void changed(ObservableValue<? extends String> ov, String old_val, String new_val) {
+
+                        System.out.println("Nouveau Salon : " + new_val );
+                        //ClientCompute.sendMsg("/setSalon " + new_val,model.getClientSocket());
+
+                    }
+                });
+    }
+
+    public void sendMsg (){
+
+        String msg=gui.getTextField(4).getText();
+
+        if (msg.length()>200){
+
+            return;
+
+        } else if (msg=="/setNickname") {
+
+            String outputPrefix = new String(msg.replaceFirst("/setNickname", "")).trim();
+
+            if(model.checkNickname(outputPrefix)) {
+                ClientCompute.sendMsg(msg, model.getClientSocket());
+            } else {
+
+            }
+
+            return;
+
+        } else if (msg=="/addSalon") {
+
+            String outputPrefix = new String(msg.replaceFirst("/addSalon", "")).trim();
+
+            if(model.checkSalon(outputPrefix)) {
+                ClientCompute.sendMsg(msg, model.getClientSocket());
+            } else {
+
+            }
+
+            return;
+
+        } else if (msg=="/help"){
+
+            String [] msgHelp = new String [] {"    - /setNickname : Change de pseudo", "   - /getNickname : Affiche la liste des cients connecte au salon",
+                    "   - /getSalon : Affiche la liste des salons","    - /setSalon : Modifie le salon en cours","  - /addSalon : Ajoute in salon","    - /quit : Se deconnecte du serveur",};
+
+            gui.setTextMsg("Console d aide (Commandes) : ");
+
+            for (int j = 0; j < msgHelp.length; j++) {
+                gui.setTextMsg(msgHelp[j] + "\n");
+            }
+            return;
+
+        } else if (msg=="/quit"){
+
+            disconnect();
+            return;
+
+        } else {
+
+            ClientCompute.sendMsg(msg, model.getClientSocket());
+
+            gui.setTextMsg(model.getNickname() + ": " + msg);
+            gui.setTextMsg("\n");
+
+        }
+
+
+    }
+
+    public void disconnect () {
+
+        ClientCompute.sendMsg("/quit",model.getClientSocket());
+
+        try {
+            model.getClientSocket().close();
+        } catch (IOException e) {
+        }
+
+        try {
+            model.getSelector().close();
+        } catch (IOException e) {
+        }
+
+        gui.clearClientSalon();
+        gui.getAreaMsg().clear();
+
+        gui.getBoutton(0).setDisable(false);
+        gui.getBoutton(1).setDisable(true);
+        gui.getBoutton(2).setDisable(true);
+        gui.getBoutton(3).setDisable(true);
+
     }
 
 }

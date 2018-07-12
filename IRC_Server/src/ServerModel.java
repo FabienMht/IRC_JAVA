@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -56,6 +57,7 @@ public class ServerModel {
 
         return clientReturn;
     }
+
     public String getClientsName(ArrayList<ServerClients> clientsName){
 
         String clientReturn="";
@@ -149,12 +151,24 @@ public class ServerModel {
 
     }
 
-    public void deleteClients(ServerClients name){
+    public void deleteClients(ServerClients name) throws IOException {
+        name.getSocketChannel().close();
         clientsList.remove(name);
     }
-    public void deleteAllClients(){
-        clientsList.clear();
+    public void deleteClients(ArrayList<ServerClients> clientsList) throws IOException {
+
+        Iterator itr=clientsList.iterator();
+
+        while(itr.hasNext()){
+
+            ServerClients st=(ServerClients)itr.next();
+
+            st.getSocketChannel().close();
+            clientsList.remove(st);
+
+        }
     }
+
     public void deleteSalons(String name){
         salonsList.remove(name);
     }
