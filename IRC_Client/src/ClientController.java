@@ -8,12 +8,17 @@ import javafx.stage.Stage;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class ClientController {
 
     private ClientGui gui;
     private ClientModel model;
     private Stage stage;
+    private DateFormat df = new SimpleDateFormat("HH:mm:ss");
+    private Date date = new Date();
 
     public ClientController(ClientGui a, ClientModel b,Stage c){
         this.gui=a;
@@ -59,17 +64,37 @@ public class ClientController {
         gui.getBoutton(0).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
 
+                String Ip;
+                Integer Port;
+
                 gui.getTextField(0).setText("127.0.0.1");
                 gui.getTextField(1).setText("27001");
 
-                try {
-                    model.setIpPort(gui.getTextField(0).getText(), Integer.parseInt(gui.getTextField(1).getText()));
-
-                } catch (Exception ex) {
+                if(checkIPAddress(gui.getTextField(0).getText())){
+                    Ip=gui.getTextField(0).getText();
+                } else {
+                    gui.setTextMsg("Format de l'adresse IP incorrect 0-255.0-255.0-255.0-255" + "\n");
                     return;
                 }
 
-                model.setNickname(gui.getTextField(2).getText());
+                try {
+                    if (Integer.parseInt(gui.getTextField(1).getText()) < 65635 && Integer.parseInt(gui.getTextField(1).getText()) > 1024) {
+                        Port = Integer.parseInt(gui.getTextField(1).getText());
+                        model.setIpPort(Ip, Port);
+                    } else {
+                        throw new NumberFormatException();
+                    }
+                } catch (NumberFormatException ex){
+                    gui.setTextMsg("Le numéro de port est incorrect : 1024 < port < 65534" + "\n");
+                    return;
+                }
+
+                if (  ! gui.getTextField(2).getText().trim().equalsIgnoreCase("")) {
+                    model.setNickname(gui.getTextField(2).getText());
+                } else {
+                    gui.setTextMsg("Format du nickname incorrect" + "\n");
+                    return;
+                }
 
                 ClientCompute compute=new ClientCompute(model,gui);
                 compute.start();
@@ -93,22 +118,25 @@ public class ClientController {
 
         gui.getBoutton(2).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
+                checkSalon(gui.getTextField(3).getText());
+            }
+        });
 
-                if(model.checkSalon(gui.getTextField(3).getText())) {
-                    model.setSalons(gui.getTextField(3).getText());
-                    ClientCompute.sendMsg("/addSalon " + gui.getTextField(3).getText(),model.getClientSocket());
-                    gui.majSalon();
-                } else {
-
+        gui.getTextField(3).setOnKeyPressed(new EventHandler<KeyEvent>() {
+            public void handle(KeyEvent ke)
+            {
+                if(gui.getBoutton(0).isDisable()) {
+                    if (ke.getCode().equals(KeyCode.ENTER)) {
+                        checkSalon(gui.getTextField(3).getText());
+                    }
                 }
-
             }
         });
 
         gui.getBoutton(3).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
                 sendMsg();
-                gui.getTextField(0).clear();
+                gui.getTextField(4).clear();
             }
         });
 
@@ -118,7 +146,7 @@ public class ClientController {
                 if(gui.getBoutton(0).isDisable()) {
                     if (ke.getCode().equals(KeyCode.ENTER)) {
                         sendMsg();
-                        gui.getTextField(0).clear();
+                        gui.getTextField(4).clear();
                     }
                 }
             }
@@ -128,7 +156,7 @@ public class ClientController {
                     public void changed(ObservableValue<? extends String> ov, String old_val, String new_val) {
 
                         System.out.println("Nouveau Salon : " + new_val );
-                        //ClientCompute.sendMsg("/setSalon " + new_val,model.getClientSocket());
+                        ClientCompute.sendMsg("/setSalon " + new_val,model.getClientSocket());
 
                     }
                 });
@@ -187,7 +215,7 @@ public class ClientController {
 
             ClientCompute.sendMsg(msg, model.getClientSocket());
 
-            gui.setTextMsg(model.getNickname() + ": " + msg);
+            gui.setTextMsg(df.format(date) + " " + model.getNickname() + " : " + msg);
             gui.setTextMsg("\n");
 
         }
@@ -217,6 +245,35 @@ public class ClientController {
         gui.getBoutton(2).setDisable(true);
         gui.getBoutton(3).setDisable(true);
 
+    }
+
+    public boolean checkIPAddress( String ipAddress ) {
+
+        String[] tokens = ipAddress.split("\\.");
+
+        if (tokens.length != 4) {
+            return false;
+        }
+
+        for (String str : tokens) {
+            int i = Integer.parseInt(str);
+            if ((i < 0) || (i > 255)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void checkSalon (String Salon){
+
+        if(model.checkSalon(Salon)) {
+            model.setSalons(Salon);
+            ClientCompute.sendMsg("/addSalon " + Salon,model.getClientSocket());
+            gui.majSalon();
+        } else {
+
+        }
     }
 
 }

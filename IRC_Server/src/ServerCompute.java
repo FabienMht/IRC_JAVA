@@ -158,9 +158,11 @@ public class ServerCompute extends Thread {
 
                                 log.setLogContent(output, ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
 
+                                String outputPrefix = model.getClients(client).getNickname() + " : " + output;
+
                                 String salonWrite=model.getClients(client).getSalon();
 
-                                sendMsg(output,model.getClients(salonWrite),client);
+                                sendMsg(outputPrefix,model.getClients(salonWrite),client);
 
                             }
 

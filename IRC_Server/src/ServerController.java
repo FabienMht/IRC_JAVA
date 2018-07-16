@@ -15,6 +15,7 @@ public class ServerController {
     private ServerModel model;
     private ServerLog log;
     private Stage stage;
+    private ServerCompute compute;
 
 
     public ServerController(ServerGui a, ServerModel b,Stage c,ServerLog d){
@@ -88,22 +89,34 @@ public class ServerController {
             @Override
             public void handle(ActionEvent event) {
 
+                String Ip;
+                Integer Port;
+
                 gui.getTextField(0).setText("127.0.0.1");
                 gui.getTextField(1).setText("27001");
 
-                //boolean isValid = InetAddresses.isInetAddress("1.2.3.4");
-
-                try {
-                    model.setIpPort(gui.getTextField(0).getText(), Integer.parseInt(gui.getTextField(1).getText()));
-
-                } catch (Exception ex) {
-                    log.setLogContent(ex.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+                if(checkIPAddress(gui.getTextField(0).getText())){
+                    Ip=gui.getTextField(0).getText();
+                } else {
+                    log.setLogContent("Format de l'adresse IP incorrect 0-255.0-255.0-255.0-255",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
                     return;
                 }
 
-                log.setLogContent("Demarrage du serveur !", ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+                try {
+                    if (Integer.parseInt(gui.getTextField(1).getText()) < 65635 && Integer.parseInt(gui.getTextField(1).getText()) > 1024) {
+                        Port = Integer.parseInt(gui.getTextField(1).getText());
+                        model.setIpPort(Ip, Port);
+                    } else {
+                        throw new NumberFormatException();
+                    }
+                } catch (NumberFormatException ex){
+                    log.setLogContent("Le numéro de port est incorrect : 1024 < port < 65534",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
+                    return;
+                }
 
-                ServerCompute compute=new ServerCompute(log,model,gui);
+                log.setLogContent("Demarrage du serveur IP : " + model.getIpAddress().getHostAddress() + " Port : " + model.getPort(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+
+                compute=new ServerCompute(log,model,gui);
                 compute.start();
 
                 model.setSalons("Principal");
@@ -126,7 +139,9 @@ public class ServerController {
             @Override
             public void handle(ActionEvent event) {
 
-                log.setLogContent("Arret du serveur !",ServerLog.Level.INFO,ServerLog.Facility.SERVER);
+                log.setLogContent("Arret du serveur",ServerLog.Level.WARNING,ServerLog.Facility.SERVER);
+
+                compute.interrupt();
 
                 ServerCompute.sendMsg("/quit",model.getClients());
 
@@ -139,14 +154,14 @@ public class ServerController {
                 try {
                     model.getServerSocket().close();
                 } catch (IOException e) {
-                    log.setLogContent("Echec de l arret du server socket channel !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
+                    log.setLogContent("Echec de l arret du server socket channel",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
                 }
 
                 try {
-                    //model.getSelector().selectedKeys().clear();
+                    System.out.println(model.getSelector().selectedKeys().isEmpty());
                     model.getSelector().close();
                 } catch (IOException e) {
-                    log.setLogContent("Echec de l arret du selecteur !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
+                    log.setLogContent("Echec de l arret du selecteur",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
                 }
 
                 gui.clearClientSalon();
@@ -236,6 +251,10 @@ public class ServerController {
 
                 String salonSupp=gui.getListView(0).getSelectionModel().getSelectedItem().toString();
 
+                if (salonSupp.equals("Principal")) {
+                    return;
+                }
+
                 log.setLogContent("Salon supp : " + salonSupp,ServerLog.Level.INFO,ServerLog.Facility.SERVER);
 
                 ServerCompute.sendMsg("/quit",model.getClients(salonSupp));
@@ -243,7 +262,8 @@ public class ServerController {
                 try {
                     model.deleteClients(model.getClients(salonSupp));
                 } catch (IOException e) {
-                    log.setLogContent("Echec de l arret du socket channel !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
+                    log.setLogContent("Echec de deco des clients !",ServerLog.Level.ERROR,ServerLog.Facility.SERVER);
+                    return;
                 }
 
                 model.deleteSalons(salonSupp);
@@ -265,5 +285,23 @@ public class ServerController {
             }
         });
 
+    }
+
+    public boolean checkIPAddress( String ipAddress ) {
+
+        String[] tokens = ipAddress.split("\\.");
+
+        if (tokens.length != 4) {
+            return false;
+        }
+
+        for (String str : tokens) {
+            int i = Integer.parseInt(str);
+            if ((i < 0) || (i > 255)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

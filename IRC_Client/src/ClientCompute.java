@@ -6,6 +6,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -13,6 +16,8 @@ public class ClientCompute extends Thread {
 
     private ClientModel model;
     private ClientGui gui;
+    private DateFormat df = new SimpleDateFormat("HH:mm:ss");
+    private Date dateobj = new Date();
 
     public ClientCompute (ClientModel a,ClientGui b) {
         this.model=a;
@@ -156,7 +161,7 @@ public class ClientCompute extends Thread {
                         } else {
 
                             String outputPrefix = new String(output).trim();
-                            gui.setTextMsg(outputPrefix);
+                            gui.setTextMsg(df.format(dateobj) + " " + outputPrefix);
                             gui.setTextMsg("\n");
                         }
 

@@ -59,12 +59,16 @@ public class ClientGui extends Application {
         butDisconnect.setDisable(true);
         butSend.setDisable(true);
         butSalon.setDisable(true);
+        butSalon.setPrefWidth(60);
 
         // Dec
         textAreaMsg.setEditable(false);
         textAreaMsg.setPrefHeight(500);
         textAreaMsg.setPrefWidth(600);
         textMsg.setPrefWidth(500);
+
+        textIP.setPromptText("0-255.0-255.0-255.0-255");
+        textPort.setPromptText("1024 < port < 65534");
 
         Label labelIP = new Label("IP :");
         Label labelPort = new Label("Port :");

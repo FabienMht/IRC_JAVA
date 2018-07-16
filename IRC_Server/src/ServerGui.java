@@ -77,6 +77,9 @@ public class ServerGui extends Application {
         textAreaLog.setPrefHeight(500);
         textAreaLog.setPrefWidth(600);
 
+        textIP.setPromptText("0-255.0-255.0-255.0-255");
+        textPort.setPromptText("1024 < port < 65534");
+
         boxLog.setValue("DEBUG");
 
         Label labelIP = new Label("IP :");
