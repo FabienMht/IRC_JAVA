@@ -141,8 +141,6 @@ public class ServerController {
 
                 log.setLogContent("Arret du serveur",ServerLog.Level.WARNING,ServerLog.Facility.SERVER);
 
-                compute.interrupt();
-
                 ServerCompute.sendMsg("/quit",model.getClients());
 
                 try {
@@ -211,7 +209,8 @@ public class ServerController {
                     ServerCompute.sendMsg("/quit",st.getSocketChannel());
 
                     try {
-                        model.deleteClients(st);
+                        st.getSocketChannel().close();
+                        itr.remove();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
