@@ -15,6 +15,8 @@ import java.io.File;
 
 public class ClientGui extends Application {
 
+    public enum Status { Connected, Disconnected, Error }
+
     private TextArea textAreaMsg = new TextArea();
 
     private Button butConnect = new Button("Connect");
@@ -35,6 +37,8 @@ public class ClientGui extends Application {
     private MenuItem itemSaveLog = new MenuItem("Save Log");
     private MenuItem itemLicence = new MenuItem("Licence");
     private MenuItem itemQuitter = new MenuItem("Quitter");
+
+    private Label labelStatus = new Label("Status");
 
     ClientModel model=new ClientModel();
 
@@ -106,15 +110,20 @@ public class ClientGui extends Application {
         VBox vboxMsg = new VBox(10);
         vboxMsg.setAlignment(Pos.CENTER);
 
+        HBox hboxLogStatusBar = new HBox(30);
+        hboxLogStatusBar.setAlignment(Pos.CENTER_LEFT);
+        hboxLogStatusBar.setPadding(new Insets(0, 0, 0, 5));
+
         hboxInput.getChildren().addAll(labelIP,textIP,labelPort,textPort,labelName,textNickname,butConnect,butDisconnect);
         hboxSalon.getChildren().addAll(textSalon,butSalon);
         hboxMsg.getChildren().addAll(textMsg,butSend);
+        hboxLogStatusBar.getChildren().addAll(labelStatus);
         vboxSalon.getChildren().addAll(labelSalon,listSalon,hboxSalon);
         vboxMsg.getChildren().addAll(textAreaMsg,hboxMsg);
         vboxClient.getChildren().addAll(labelClient,listClient);
         hboxCore.getChildren().addAll(vboxSalon,vboxMsg,vboxClient);
 
-        vboxAll.getChildren().addAll(menuBar,hboxInput,hboxCore);
+        vboxAll.getChildren().addAll(menuBar,hboxInput,hboxCore,hboxLogStatusBar);
 
         ClientController controlleur = new ClientController(this,model,primaryStage);
 
@@ -213,11 +222,9 @@ public class ClientGui extends Application {
 
         FileChooser fileChooser = new FileChooser();
 
-        //Set extension filter
         FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt");
         fileChooser.getExtensionFilters().add(extFilter);
 
-        //Show save file dialog
         File file = fileChooser.showSaveDialog(stage);
 
         return file;
@@ -235,11 +242,13 @@ public class ClientGui extends Application {
 
     }
 
-    public void clearClientSalon (){
+    public void setStatus(Status status,String msg){
 
-        getListView(1).getItems().clear();
-        getListView(0).getItems().clear();
-
+        if (msg=="") {
+            labelStatus.setText("Status : " + status);
+        } else {
+            labelStatus.setText("Status : " + status + " msg : " + msg);
+        }
     }
 
 }

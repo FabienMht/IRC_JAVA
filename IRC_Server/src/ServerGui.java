@@ -28,7 +28,8 @@ public class ServerGui extends Application {
 
     private TextField textIP = new TextField ();
     private TextField textPort = new TextField ();
-    private ChoiceBox boxLog = new ChoiceBox(FXCollections.observableArrayList("ERROR", "INFO", "DEBUG"));
+    private ChoiceBox boxLog = new ChoiceBox(FXCollections.observableArrayList("ERROR","WARNING", "INFO", "DEBUG"));
+    private ChoiceBox timeout = new ChoiceBox(FXCollections.observableArrayList("1","5", "10", "60"));
 
     private TableView tableClient = new TableView();
     private ListView<String> listSalon = new ListView<String>();
@@ -41,6 +42,8 @@ public class ServerGui extends Application {
 
     private ListView<String> listBlacklist = new ListView<String>();
     private Button butDeleteBlacklist = new Button("Delete Client");
+
+    private Label labelStatus = new Label("Status");
 
     ServerModel model=new ServerModel();
 
@@ -81,11 +84,12 @@ public class ServerGui extends Application {
         textPort.setPromptText("1024 < port < 65534");
 
         boxLog.setValue("DEBUG");
+        timeout.setValue("5");
 
         Label labelIP = new Label("IP :");
         Label labelPort = new Label("Port :");
-        Label labelLog = new Label("LogLevel:");
-
+        Label labelLog = new Label("LogLevel :");
+        Label labelTimeout = new Label("TimeOut(min) :");
 
         Label labelClient = new Label("Clients");
         labelClient.setFont(new Font("Arial", 20));
@@ -111,11 +115,6 @@ public class ServerGui extends Application {
 
         tableClient.getColumns().addAll(nameCol, ipCol, salonCol);
 
-        //Dec Salon
-        //ObservableList<String> items =FXCollections.observableArrayList (
-        //        "Principal");
-        //listSalon.setItems(items);
-
         // Déclaration des layouts Vertical et horizontal
         HBox hboxInput = new HBox(10);
         hboxInput.setAlignment(Pos.CENTER);
@@ -125,24 +124,28 @@ public class ServerGui extends Application {
         hboxSalon.setAlignment(Pos.CENTER);
         HBox hboxLogClient = new HBox(30);
         hboxLogClient.setAlignment(Pos.CENTER);
+        HBox hboxLogStatusBar = new HBox(30);
+        hboxLogStatusBar.setAlignment(Pos.CENTER_LEFT);
+        hboxLogStatusBar.setPadding(new Insets(0, 0, 0, 5));
 
-        VBox vboxRect = new VBox(20);
-        vboxRect.setPadding(new Insets(0, 0, 20, 0));
+        VBox vboxAll = new VBox(20);
+        vboxAll.setPadding(new Insets(0, 0, 5, 0));
         VBox vboxClientSalon = new VBox(10);
         vboxClientSalon.setAlignment(Pos.CENTER);
 
-        hboxInput.getChildren().addAll(labelIP,textIP,labelPort,textPort,labelLog,boxLog,butStart,butStop);
+        hboxInput.getChildren().addAll(labelIP,textIP,labelPort,textPort,labelLog,boxLog,labelTimeout,timeout,butStart,butStop);
         hboxClient.getChildren().addAll(butDisconnect,butDisconnectAll,butBan);
         hboxSalon.getChildren().addAll(butDelete);
         hboxLogClient.getChildren().addAll(textAreaLog,vboxClientSalon);
+        hboxLogStatusBar.getChildren().addAll(labelStatus);
         vboxClientSalon.getChildren().addAll(labelClient,tableClient,hboxClient,labelSalon,listSalon,hboxSalon);
-        vboxRect.getChildren().addAll(menuBar,hboxInput,hboxLogClient);
+        vboxAll.getChildren().addAll(menuBar,hboxInput,hboxLogClient,hboxLogStatusBar);
 
         ServerLog.Level loglevel= ServerLog.Level.valueOf(boxLog.getSelectionModel().getSelectedItem().toString());
         ServerLog log = new ServerLog(this, loglevel);
         ServerController controlleur = new ServerController(this,model,primaryStage,log);
 
-        Scene scene = new Scene(vboxRect,1000,800);
+        Scene scene = new Scene(vboxAll,1000,800);
 
         primaryStage.setScene(scene);
         primaryStage.setTitle("ServerGui");
@@ -197,8 +200,14 @@ public class ServerGui extends Application {
         }
     }
 
-    public ChoiceBox getChoiceBox() {
-        return boxLog;
+    public ChoiceBox getChoiceBox(int a) {
+        if (a==0) {
+            return boxLog;
+        } else if (a==1) {
+            return timeout;
+        } else {
+            return boxLog;
+        }
     }
 
     public TableView getTableView() {
@@ -271,11 +280,9 @@ public class ServerGui extends Application {
 
         FileChooser fileChooser = new FileChooser();
 
-        //Set extension filter
         FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt");
         fileChooser.getExtensionFilters().add(extFilter);
 
-        //Show save file dialog
         File file = fileChooser.showSaveDialog(stage);
 
         return file;
@@ -286,12 +293,17 @@ public class ServerGui extends Application {
 
         getTableView().setItems(FXCollections.observableList(model.getClients()));
         getListView(0).setItems(FXCollections.observableList(model.getSalons()));
+        getTableView().refresh();
 
     }
-    public void clearClientSalon (){
 
-        getTableView().getItems().clear();
-        getListView(0).getItems().clear();
+    public void setStatus(ServerLog.Status status,String msg){
 
+        if (msg=="") {
+            labelStatus.setText("Status : " + status);
+        } else {
+            labelStatus.setText("Status : " + status + " msg : " + msg);
+        }
     }
+
 }

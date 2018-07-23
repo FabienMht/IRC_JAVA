@@ -1,23 +1,10 @@
-import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
 public class ServerClients {
 
     private String nickname,ipAddress,salon;
     private SocketChannel client;
-
-    public ServerClients(String a,String b,String c){
-        this.nickname=a;
-        this.ipAddress=b;
-        this.salon=c;
-    }
-
-    public ServerClients(String a,String b,String c,SocketChannel d){
-        this.nickname=a;
-        this.ipAddress=b;
-        this.salon=c;
-        this.client=d;
-    }
+    private Integer timeout;
 
     public ServerClients(String b,String c,SocketChannel d){
         this.ipAddress=b;
@@ -49,6 +36,13 @@ public class ServerClients {
     }
     public void setSocketChannel(SocketChannel a){
         this.client=a;
+    }
+
+    public Integer getTimeout(){
+        return timeout;
+    }
+    public void setTimeout(Integer a){
+        this.timeout=a;
     }
 
 }

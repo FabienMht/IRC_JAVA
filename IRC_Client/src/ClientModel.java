@@ -1,7 +1,6 @@
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -14,7 +13,7 @@ public class ClientModel {
     private String salonWork=null;
     private InetSocketAddress hostAddress=null;
     private SocketChannel clientSocket=null;
-    private Selector selector=null;
+    private boolean stop=true;
 
     public ClientModel (){
 
@@ -65,18 +64,18 @@ public class ClientModel {
 
     }
 
+    public Boolean getStop (){
+        return stop;
+    }
+    public void setStop (Boolean a){
+        stop=a;
+    }
+
     public SocketChannel getClientSocket (){
         return clientSocket;
     }
     public void setClientSocket (SocketChannel a){
         this.clientSocket=a;
-    }
-
-    public Selector getSelector (){
-        return selector;
-    }
-    public void setSelector (Selector a){
-        this.selector=a;
     }
 
     public String getNickname (){
@@ -88,6 +87,9 @@ public class ClientModel {
     }
     public void deleteAllClients(){
         clientsList.clear();
+    }
+    public void deleteAllSalons(){
+        salonsList.clear();
     }
     public void deleteSalons(String name){
         salonsList.remove(name);

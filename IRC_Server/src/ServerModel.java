@@ -2,11 +2,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 public class ServerModel {
 
@@ -14,8 +14,9 @@ public class ServerModel {
     private ArrayList<String> salonsList=new ArrayList<String>();
     private ArrayList<String> blackList=new ArrayList<String>();
     private InetSocketAddress hostAddress=null;
-    private ServerSocketChannel serverSocket=null;
-    private Selector selector = null;
+    private boolean stop=true;
+    private Integer nbMsg=10;
+    private Map lastMsgSalon = new HashMap();
 
     public ServerModel (){
 
@@ -102,14 +103,6 @@ public class ServerModel {
         return salonReturn;
     }
 
-    public void setClients(String nickname,String ip,String salon){
-        ServerClients client=new ServerClients(nickname,ip,salon);
-        clientsList.add(client);
-    }
-    public void setClients(String nickname, String ip, String salon, SocketChannel socket){
-        ServerClients client=new ServerClients(nickname,ip,salon,socket);
-        clientsList.add(client);
-    }
     public void setClients(String ip, String salon, SocketChannel socket){
         ServerClients client=new ServerClients(ip,salon,socket);
         clientsList.add(client);
@@ -117,6 +110,8 @@ public class ServerModel {
 
     public void setSalons(String salon){
         salonsList.add(salon);
+        ArrayList<String> lastMsg=new ArrayList<String>();
+        lastMsgSalon.put(salon,lastMsg);
     }
 
     public InetAddress getIpAddress (){
@@ -126,18 +121,49 @@ public class ServerModel {
         return hostAddress.getPort();
     }
 
-    public ServerSocketChannel getServerSocket (){
-        return serverSocket;
+    public Boolean getStop (){
+        return stop;
     }
-    public void setServerSocket (ServerSocketChannel a){
-        this.serverSocket=a;
+    public void setStop (Boolean a){
+        stop=a;
     }
 
-    public Selector getSelector (){
-        return selector;
+    public String getLastMsg (String salon){
+
+        ArrayList<String> lastMsg=(ArrayList<String>)lastMsgSalon.get(salon);
+
+        Iterator itr=lastMsg.iterator();
+        String msg="";
+
+        while(itr.hasNext()){
+
+            String st=(String)itr.next();
+            msg=msg + st + "\n";
+        }
+
+        System.out.println(msg);
+        return msg;
     }
-    public void setSelector (Selector a){
-        this.selector=a;
+
+    public void setLastMsg (String msg,String salon){
+
+        ArrayList<String> lastMsg=(ArrayList<String>)lastMsgSalon.get(salon);
+
+        if (lastMsg.size()>=nbMsg) {
+
+            System.out.println("Enter");
+
+            for (int nb=0;nb<nbMsg-1;nb++){
+                lastMsg.set(nb,lastMsg.get(nb+1));
+            }
+
+            lastMsg.set(nbMsg-1,msg);
+
+        } else {
+            lastMsg.add(msg);
+        }
+        System.out.println(lastMsg.size());
+        System.out.println(lastMsg);
     }
 
     public void setIpPort(String ip,Integer port){
@@ -162,15 +188,25 @@ public class ServerModel {
         while(itr.hasNext()){
 
             ServerClients st=(ServerClients)itr.next();
+            System.out.println(st);
 
             st.getSocketChannel().close();
-            clientsList.remove(st);
+            itr.remove();
 
         }
     }
 
+
+    public void deleteAllClients(){
+        clientsList.clear();
+    }
+    public void deleteAllSalons(){
+        salonsList.clear();
+    }
+
     public void deleteSalons(String name){
         salonsList.remove(name);
+        lastMsgSalon.remove(name);
     }
 
     public ArrayList<String> getBlackList(){
@@ -183,7 +219,7 @@ public class ServerModel {
         blackList.remove(ip);
     }
 
-    public boolean checkName(String name){
+    public boolean checkName(String name,SocketChannel chan){
 
         Iterator itr=clientsList.iterator();
 
@@ -191,12 +227,92 @@ public class ServerModel {
 
             ServerClients st=(ServerClients)itr.next();
 
-            if(st.getNickname()==name){
+            if (st!=getClients(chan)) {
+                if (st.getNickname().equals(name)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public boolean checkSalon(String salon){
+
+        Iterator itr=salonsList.iterator();
+
+        while(itr.hasNext()){
+
+            String st=(String)itr.next();
+
+            if(st.equals(salon)){
                 return false;
             }
         }
 
         return true;
+    }
+
+    public boolean checkIpBlacklist(String ip){
+
+        Iterator itr=blackList.iterator();
+
+        while(itr.hasNext()){
+
+            String st=(String)itr.next();
+
+            if(st.equals(ip)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void checkChannel(){
+
+        Iterator itr=clientsList.iterator();
+
+        while(itr.hasNext()){
+
+            ServerClients st=(ServerClients)itr.next();
+
+            //System.out.println(st.getNickname() + st.getSocketChannel().isConnected());
+
+        }
+    }
+
+    public void setTimeout(Integer time){
+
+        Iterator itr=clientsList.iterator();
+
+        while(itr.hasNext()){
+
+            ServerClients st=(ServerClients)itr.next();
+
+            st.setTimeout(time);
+
+        }
+    }
+
+    public ArrayList<ServerClients> changeTimeout(){
+
+        ArrayList<ServerClients> clientsListTimeout=new ArrayList<ServerClients>();
+        Iterator itr=clientsList.iterator();
+
+        while(itr.hasNext()){
+
+            ServerClients st=(ServerClients)itr.next();
+
+            if(st.getTimeout()==0) {
+                clientsListTimeout.add(st);
+            } else {
+                st.setTimeout(st.getTimeout() - 1);
+            }
+
+        }
+
+        return clientsListTimeout;
     }
 
 }

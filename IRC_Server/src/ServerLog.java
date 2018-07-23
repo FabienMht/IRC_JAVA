@@ -8,6 +8,7 @@ public class ServerLog {
     private SimpleDateFormat dateFormat = new SimpleDateFormat("E, dd MMM hh:mm:ss");
     public enum Level { DEBUG, INFO , WARNING , ERROR}
     public enum Facility { CLIENT, SERVER, OTHER }
+    public enum Status { Started, Stop, Error }
     private Level logLevel;
     private Facility logFacility;
     private Boolean affiche;

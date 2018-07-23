@@ -81,6 +81,7 @@ public class ClientController {
                     if (Integer.parseInt(gui.getTextField(1).getText()) < 65635 && Integer.parseInt(gui.getTextField(1).getText()) > 1024) {
                         Port = Integer.parseInt(gui.getTextField(1).getText());
                         model.setIpPort(Ip, Port);
+                        model.setStop(true);
                     } else {
                         throw new NumberFormatException();
                     }
@@ -96,6 +97,8 @@ public class ClientController {
                     return;
                 }
 
+                model.setSalonWork("Principal");
+
                 ClientCompute compute=new ClientCompute(model,gui);
                 compute.start();
 
@@ -106,6 +109,8 @@ public class ClientController {
 
                 gui.majClient();
                 gui.majSalon();
+
+                gui.setStatus(ClientGui.Status.Connected,"Salon : " + model.getSalonWork());
 
             }
         });
@@ -119,6 +124,7 @@ public class ClientController {
         gui.getBoutton(2).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
                 checkSalon(gui.getTextField(3).getText());
+                gui.getTextField(3).clear();
             }
         });
 
@@ -128,6 +134,7 @@ public class ClientController {
                 if(gui.getBoutton(0).isDisable()) {
                     if (ke.getCode().equals(KeyCode.ENTER)) {
                         checkSalon(gui.getTextField(3).getText());
+                        gui.getTextField(3).clear();
                     }
                 }
             }
@@ -155,8 +162,15 @@ public class ClientController {
         gui.getListView(0).getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
                     public void changed(ObservableValue<? extends String> ov, String old_val, String new_val) {
 
-                        System.out.println("Nouveau Salon : " + new_val );
-                        ClientCompute.sendMsg("/setSalon " + new_val,model.getClientSocket());
+                        if (new_val!=null) {
+
+                            ClientCompute.sendMsg("/setSalon " + new_val, model.getClientSocket());
+                            gui.getAreaMsg().clear();
+
+                            model.setSalonWork(new_val);
+                            gui.setStatus(ClientGui.Status.Connected,"Salon : " + model.getSalonWork());
+
+                        }
 
                     }
                 });
@@ -168,52 +182,39 @@ public class ClientController {
 
         if (msg.length()>200){
 
-            return;
+            gui.setStatus(ClientGui.Status.Error,"Msg trop long");
 
-        } else if (msg=="/setNickname") {
+        } else if (msg.startsWith("/setNickname",0)) {
 
-            String outputPrefix = new String(msg.replaceFirst("/setNickname", "")).trim();
+            ClientCompute.sendMsg(msg, model.getClientSocket());
 
-            if(model.checkNickname(outputPrefix)) {
-                ClientCompute.sendMsg(msg, model.getClientSocket());
-            } else {
+        } else if (msg.startsWith("/addSalon",0)) {
 
-            }
+            ClientCompute.sendMsg(msg, model.getClientSocket());
 
-            return;
+        } else if (msg.startsWith("/help",0)){
 
-        } else if (msg=="/addSalon") {
+            String [] msgHelp = new String [] {
+                    "   - /setNickname : Change de pseudo",
+                    "   - /getNickname : Affiche la liste des cients connectes au salon",
+                    "   - /getSalon : Affiche la liste des salons",
+                    "   - /setSalon : Modifie le salon en cours",
+                    "   - /addSalon : Ajoute in salon",
+                    "   - /quit : Se deconnecte du serveur",};
 
-            String outputPrefix = new String(msg.replaceFirst("/addSalon", "")).trim();
-
-            if(model.checkSalon(outputPrefix)) {
-                ClientCompute.sendMsg(msg, model.getClientSocket());
-            } else {
-
-            }
-
-            return;
-
-        } else if (msg=="/help"){
-
-            String [] msgHelp = new String [] {"    - /setNickname : Change de pseudo", "   - /getNickname : Affiche la liste des cients connecte au salon",
-                    "   - /getSalon : Affiche la liste des salons","    - /setSalon : Modifie le salon en cours","  - /addSalon : Ajoute in salon","    - /quit : Se deconnecte du serveur",};
-
-            gui.setTextMsg("Console d aide (Commandes) : ");
+            gui.setTextMsg("Console d aide (Commandes) : " + "\n");
 
             for (int j = 0; j < msgHelp.length; j++) {
                 gui.setTextMsg(msgHelp[j] + "\n");
             }
-            return;
 
-        } else if (msg=="/quit"){
+        } else if (msg.startsWith("/quit",0)){
 
             disconnect();
-            return;
 
         } else {
 
-            ClientCompute.sendMsg(msg, model.getClientSocket());
+            ClientCompute.sendMsg(df.format(date) + " " + model.getNickname() + " : " + msg, model.getClientSocket());
 
             gui.setTextMsg(df.format(date) + " " + model.getNickname() + " : " + msg);
             gui.setTextMsg("\n");
@@ -227,23 +228,22 @@ public class ClientController {
 
         ClientCompute.sendMsg("/quit",model.getClientSocket());
 
-        try {
-            model.getClientSocket().close();
-        } catch (IOException e) {
-        }
+        model.setStop(false);
 
-        try {
-            model.getSelector().close();
-        } catch (IOException e) {
-        }
+        model.deleteAllClients();
+        model.deleteAllSalons();
 
-        gui.clearClientSalon();
+        gui.majClient();
+        gui.majSalon();
+
         gui.getAreaMsg().clear();
 
         gui.getBoutton(0).setDisable(false);
         gui.getBoutton(1).setDisable(true);
         gui.getBoutton(2).setDisable(true);
         gui.getBoutton(3).setDisable(true);
+
+        gui.setStatus(ClientGui.Status.Disconnected,"");
 
     }
 
@@ -267,13 +267,10 @@ public class ClientController {
 
     public void checkSalon (String Salon){
 
-        if(model.checkSalon(Salon)) {
-            model.setSalons(Salon);
-            ClientCompute.sendMsg("/addSalon " + Salon,model.getClientSocket());
-            gui.majSalon();
-        } else {
+        model.setSalons(Salon);
+        ClientCompute.sendMsg("/addSalon " + Salon,model.getClientSocket());
+        gui.majSalon();
 
-        }
     }
 
 }
