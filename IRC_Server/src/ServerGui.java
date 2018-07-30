@@ -14,8 +14,15 @@ import javafx.stage.Stage;
 import java.io.File;
 
 
+/**
+ Classe qui permet de gérer la partie graphique de l'application.
+ */
 public class ServerGui extends Application {
 
+
+    /**
+     Déclaration des composants graphique qui vont être utilisés par les méthode de la classe.
+     */
     private TextArea textAreaLog = new TextArea();
 
     private Button butStart = new Button("Start");
@@ -30,14 +37,15 @@ public class ServerGui extends Application {
     private TextField textPort = new TextField ();
     private ChoiceBox boxLog = new ChoiceBox(FXCollections.observableArrayList("ERROR","WARNING", "INFO", "DEBUG"));
     private ChoiceBox timeout = new ChoiceBox(FXCollections.observableArrayList("1","5", "10", "60"));
+    private ChoiceBox nbMsg = new ChoiceBox(FXCollections.observableArrayList("10","20", "30"));
 
     private TableView tableClient = new TableView();
     private ListView<String> listSalon = new ListView<String>();
 
-    private MenuItem itemSaveLog = new MenuItem("Save Log");
+    private MenuItem itemSaveLog = new MenuItem("Save Msg");
     private MenuItem itemBanClient = new MenuItem("Blacklist Client");
     private MenuItem itemLicence = new MenuItem("Licence");
-    private MenuItem itemCleanLog = new MenuItem("Clean Log");
+    private MenuItem itemCleanLog = new MenuItem("Clean Msg");
     private MenuItem itemQuitter = new MenuItem("Quitter");
 
     private ListView<String> listBlacklist = new ListView<String>();
@@ -52,6 +60,9 @@ public class ServerGui extends Application {
         launch(args);
     }
 
+    /**
+     Permet de générer la fenêtre graphique à partir de la stage.
+     */
     public void start(Stage primaryStage) throws Exception {
 
         //Déclaration du menu
@@ -67,6 +78,7 @@ public class ServerGui extends Application {
 
         menuBar.getMenus().addAll(menuFichier,menuView,menuAide);
 
+        //Active et désactive les bouttons en fonction de l'état du serveur (démarré ou arreté)
         getBoutton(0).setDisable(false);
         getBoutton(1).setDisable(true);
         getBoutton(2).setDisable(true);
@@ -75,21 +87,26 @@ public class ServerGui extends Application {
         getBoutton(5).setDisable(true);
         getBoutton(6).setDisable(true);
 
-        // Dec
+        //Modification des proprietés de la zone d'affichage des logs
         textAreaLog.setEditable(false);
         textAreaLog.setPrefHeight(500);
         textAreaLog.setPrefWidth(600);
 
+        //Affiche l'aide dans les textbox
         textIP.setPromptText("0-255.0-255.0-255.0-255");
         textPort.setPromptText("1024 < port < 65534");
 
+        //Modification de la valeur par défaut des combobox
         boxLog.setValue("DEBUG");
-        timeout.setValue("5");
+        timeout.setValue("1");
+        nbMsg.setValue("10");
 
+        //Déclaration des labels
         Label labelIP = new Label("IP :");
         Label labelPort = new Label("Port :");
         Label labelLog = new Label("LogLevel :");
         Label labelTimeout = new Label("TimeOut(min) :");
+        Label labelNbMsg = new Label("NbMsg :");
 
         Label labelClient = new Label("Clients");
         labelClient.setFont(new Font("Arial", 20));
@@ -98,7 +115,7 @@ public class ServerGui extends Application {
         Label labelSyslog = new Label("Syslog");
         labelSyslog.setFont(new Font("Arial", 20));
 
-        //Dec
+        //Declaration des colonnes de la tableview et les associes au attributs des clients de la classe ServerClients
         TableColumn nameCol = new TableColumn("Nickname");
         TableColumn ipCol = new TableColumn("IP");
         TableColumn salonCol = new TableColumn("Salon");
@@ -133,7 +150,7 @@ public class ServerGui extends Application {
         VBox vboxClientSalon = new VBox(10);
         vboxClientSalon.setAlignment(Pos.CENTER);
 
-        hboxInput.getChildren().addAll(labelIP,textIP,labelPort,textPort,labelLog,boxLog,labelTimeout,timeout,butStart,butStop);
+        hboxInput.getChildren().addAll(labelIP,textIP,labelPort,textPort,labelLog,boxLog,labelTimeout,timeout,labelNbMsg,nbMsg,butStart,butStop);
         hboxClient.getChildren().addAll(butDisconnect,butDisconnectAll,butBan);
         hboxSalon.getChildren().addAll(butDelete);
         hboxLogClient.getChildren().addAll(textAreaLog,vboxClientSalon);
@@ -141,6 +158,7 @@ public class ServerGui extends Application {
         vboxClientSalon.getChildren().addAll(labelClient,tableClient,hboxClient,labelSalon,listSalon,hboxSalon);
         vboxAll.getChildren().addAll(menuBar,hboxInput,hboxLogClient,hboxLogStatusBar);
 
+        //Création du controlleur et du LOGGER
         ServerLog.Level loglevel= ServerLog.Level.valueOf(boxLog.getSelectionModel().getSelectedItem().toString());
         ServerLog log = new ServerLog(this, loglevel);
         ServerController controlleur = new ServerController(this,model,primaryStage,log);
@@ -154,6 +172,9 @@ public class ServerGui extends Application {
 
     }
 
+    /**
+     Retourne un objet boutton en fonction de l'entier en paramètre.
+     */
     public Button getBoutton(int a) {
         if (a==0) {
             return butStart;
@@ -174,6 +195,9 @@ public class ServerGui extends Application {
         }
     }
 
+    /**
+     Retourne un objet Menuitems en fonction de l'entier en paramètre.
+     */
     public MenuItem getMenuItems(int a){
         if (a==0) {
             return itemQuitter;
@@ -190,6 +214,9 @@ public class ServerGui extends Application {
         }
     }
 
+    /**
+     Retourne un objet Textfield en fonction de l'entier en paramètre.
+     */
     public TextField getTextField(int a) {
         if (a==0) {
             return textIP;
@@ -200,20 +227,31 @@ public class ServerGui extends Application {
         }
     }
 
+    /**
+     Retourne un objet choicebox en fonction de l'entier en paramètre.
+     */
     public ChoiceBox getChoiceBox(int a) {
         if (a==0) {
             return boxLog;
         } else if (a==1) {
             return timeout;
-        } else {
+        } else if (a==2) {
+            return nbMsg;
+        }else {
             return boxLog;
         }
     }
 
+    /**
+     Retourne la tableview qui affiche la liste des clients.
+     */
     public TableView getTableView() {
         return tableClient;
     }
 
+    /**
+     Retourne un objet listview en fonction de l'entier en paramètre.
+     */
     public ListView getListView(int a) {
         if (a==0) {
             return listSalon;
@@ -224,21 +262,37 @@ public class ServerGui extends Application {
         }
     }
 
+    /**
+     Retourne l'objet textarea qui affiche les logs.
+     */
     public TextArea getAreaLog() {
         return textAreaLog;
     }
 
+    /**
+     Retourne le contenu des logs affiché à l'écran.
+     */
     public String getTextLog() {
         return textAreaLog.getText();
     }
 
+    /**
+     Permet d'ajouter des logs à l'écran.
+     */
     public void setTextLog(String a){
         textAreaLog.appendText(a);
     }
+
+    /**
+     Permet d'effacer le contenu des logs.
+     */
     public void cleanTextLog(){
         textAreaLog.clear();
     }
 
+    /**
+     Affiche la fenêtre de la licence de l'app.
+     */
     public void setLicenceWindow(){
 
         Label labelLicence = new Label("Name");
@@ -257,6 +311,9 @@ public class ServerGui extends Application {
 
     }
 
+    /**
+     Affiche une fenêtre qui liste les clients Banni.
+     */
     public void setBlacklistWindow(){
 
         VBox vboxBlacklist = new VBox(20);
@@ -276,6 +333,10 @@ public class ServerGui extends Application {
 
     }
 
+    /**
+     Affiche une boite de dialogue pour enregistrer le fichier.
+     @return Le chemin du fichier à sauvegarder
+     */
     public File showLogSaver(Stage stage){
 
         FileChooser fileChooser = new FileChooser();
@@ -289,6 +350,9 @@ public class ServerGui extends Application {
 
     }
 
+    /**
+     Mets à jour la liste des salons et des clients.
+     */
     public void majClientSalon (){
 
         getTableView().setItems(FXCollections.observableList(model.getClients()));
@@ -297,9 +361,12 @@ public class ServerGui extends Application {
 
     }
 
+    /**
+     Modifie le status de la GUI.
+     */
     public void setStatus(ServerLog.Status status,String msg){
 
-        if (msg=="") {
+        if (msg.equals("")) {
             labelStatus.setText("Status : " + status);
         } else {
             labelStatus.setText("Status : " + status + " msg : " + msg);

@@ -95,35 +95,21 @@ public class ClientModel {
         salonsList.remove(name);
     }
 
-    public boolean checkNickname(String name){
+    public void updateNickname(String oldName,String newName){
 
         Iterator itr=clientsList.iterator();
 
         while(itr.hasNext()){
 
             String st=(String) itr.next();
+            System.out.println(st + oldName);
+            if(st.equals(oldName)){
 
-            if(st==name){
-                return false;
+                System.out.println(st);
+                clientsList.add(clientsList.indexOf(st),newName);
+
             }
         }
-
-        return true;
     }
 
-    public boolean checkSalon(String name){
-
-        Iterator itr=salonsList.iterator();
-
-        while(itr.hasNext()){
-
-            String st=(String) itr.next();
-
-            if(st==name){
-                return false;
-            }
-        }
-
-        return true;
-    }
 }

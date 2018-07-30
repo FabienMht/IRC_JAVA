@@ -8,6 +8,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+/**
+ Classe qui permet d'enregistrer :
+    - La liste des clients
+    - La liste des salons
+    - La liste des clients banni
+    - La liste des derniers msg par salon
+ */
 public class ServerModel {
 
     private ArrayList<ServerClients> clientsList=new ArrayList<ServerClients>();
@@ -22,9 +29,16 @@ public class ServerModel {
 
     }
 
+    /**
+     Retourne la liste de tous les clients
+     */
     public ArrayList<ServerClients> getClients(){
         return clientsList;
     }
+
+    /**
+     Retourne la list des clients connéctés au salon donné en paramètre
+     */
     public ArrayList<ServerClients> getClients(String salon){
 
         ArrayList<ServerClients> clientsListSalon=new ArrayList<ServerClients>();
@@ -41,6 +55,10 @@ public class ServerModel {
 
         return clientsListSalon;
     }
+
+    /**
+     Retourne le client qui correspond au socket channel donné en paramètre
+     */
     public ServerClients getClients(SocketChannel channel){
 
         ServerClients clientReturn=null;
@@ -59,6 +77,9 @@ public class ServerModel {
         return clientReturn;
     }
 
+    /**
+     Retourne le nickname des clients sous la forme d'un chaine "nom1,nom2 ..." d'une liste de clients donné en paramètre
+     */
     public String getClientsName(ArrayList<ServerClients> clientsName){
 
         String clientReturn="";
@@ -79,10 +100,16 @@ public class ServerModel {
         return clientReturn;
     }
 
+    /**
+     Retourne la liste des salons
+     */
     public ArrayList<String> getSalons(){
         return salonsList;
     }
 
+    /**
+     Retourne la liste des salons sous la forme d'un chaine "nom1,nom2 ..."
+     */
     public String getSalonsFormat(){
 
         Iterator itrSalon=salonsList.iterator();
@@ -103,11 +130,20 @@ public class ServerModel {
         return salonReturn;
     }
 
+    /**
+     Ajout d'un nouveau client au model :
+        - Adresse IP
+        - Salon
+        - Le socket channel associé
+     */
     public void setClients(String ip, String salon, SocketChannel socket){
         ServerClients client=new ServerClients(ip,salon,socket);
         clientsList.add(client);
     }
 
+    /**
+     Ajoute un salon à la liste
+     */
     public void setSalons(String salon){
         salonsList.add(salon);
         ArrayList<String> lastMsg=new ArrayList<String>();
@@ -128,12 +164,56 @@ public class ServerModel {
         stop=a;
     }
 
+    public Integer getNbMsg (){
+        return nbMsg;
+    }
+
+    /**
+     Ajoute un salon à la liste
+     */
+    public void setNbMsg (Integer a){
+
+        if (a<nbMsg) {
+
+            for (String salon : getSalons()) {
+
+                ArrayList<String> lastMsg = (ArrayList<String>) lastMsgSalon.get(salon);
+
+                if (lastMsg.size()>a) {
+
+                    Integer initSize=lastMsg.size();
+
+                    for (int nb = initSize - a; nb < initSize; nb++) {
+                        lastMsg.set(nb - (initSize - a), lastMsg.get(nb));
+                    }
+
+                    for (int nb = initSize-1; nb >= a;nb--) {
+                        lastMsg.remove(nb);
+                    }
+
+                }
+
+                System.out.println(lastMsg);
+
+            }
+
+        }
+
+        nbMsg=a;
+
+
+    }
+
+    /**
+     Ajoute un salon à la liste
+     */
     public String getLastMsg (String salon){
 
         ArrayList<String> lastMsg=(ArrayList<String>)lastMsgSalon.get(salon);
 
-        Iterator itr=lastMsg.iterator();
         String msg="";
+
+        Iterator itr=lastMsg.iterator();
 
         while(itr.hasNext()){
 
@@ -142,9 +222,13 @@ public class ServerModel {
         }
 
         System.out.println(msg);
+
         return msg;
     }
 
+    /**
+     Ajoute un salon à la liste
+     */
     public void setLastMsg (String msg,String salon){
 
         ArrayList<String> lastMsg=(ArrayList<String>)lastMsgSalon.get(salon);
@@ -166,6 +250,9 @@ public class ServerModel {
         System.out.println(lastMsg);
     }
 
+    /**
+     Ajoute un salon à la liste
+     */
     public void setIpPort(String ip,Integer port){
 
         try {
@@ -177,10 +264,17 @@ public class ServerModel {
 
     }
 
+    /**
+     Ajoute un salon à la liste
+     */
     public void deleteClients(ServerClients name) throws IOException {
         name.getSocketChannel().close();
         clientsList.remove(name);
     }
+
+    /**
+     Ajoute un salon à la liste
+     */
     public void deleteClients(ArrayList<ServerClients> clientsList) throws IOException {
 
         Iterator itr=clientsList.iterator();
@@ -261,25 +355,14 @@ public class ServerModel {
 
             String st=(String)itr.next();
 
+            System.out.println(st);
+
             if(st.equals(ip)){
                 return false;
             }
         }
 
         return true;
-    }
-
-    public void checkChannel(){
-
-        Iterator itr=clientsList.iterator();
-
-        while(itr.hasNext()){
-
-            ServerClients st=(ServerClients)itr.next();
-
-            //System.out.println(st.getNickname() + st.getSocketChannel().isConnected());
-
-        }
     }
 
     public void setTimeout(Integer time){

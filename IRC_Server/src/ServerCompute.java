@@ -14,6 +14,9 @@ public class ServerCompute extends Thread {
     private ServerLog log;
     private ServerModel model;
     private ServerGui gui;
+    private Selector selector;
+    private ServerSocketChannel serverSocket;
+
 
     public ServerCompute (ServerLog a,ServerModel b,ServerGui c) {
         this.log=a;
@@ -21,14 +24,18 @@ public class ServerCompute extends Thread {
         this.gui=c;
     }
 
+    /**
+     Affiche une boite de dialogue pour enregistrer le fichier.
+     @return Le chemin du fichier à sauvegarder
+     */
     public void run() {
 
         try {
 
-            Selector selector = Selector.open();
+            selector = Selector.open();
             log.setLogContent("Selecteur pret pour nouvelle connexion : " + selector.isOpen(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
-            ServerSocketChannel serverSocket = ServerSocketChannel.open();
+            serverSocket = ServerSocketChannel.open();
             InetSocketAddress hostAddress = new InetSocketAddress(model.getIpAddress(),model.getPort());
 
             serverSocket.bind(hostAddress);
@@ -39,8 +46,6 @@ public class ServerCompute extends Thread {
             while (model.getStop()) {
 
                 int numberKeys = selector.select(500);
-
-                model.checkChannel();
 
                 Set<SelectionKey> selectedKeys = selector.selectedKeys();
                 Iterator<SelectionKey> itr = selectedKeys.iterator();
@@ -55,6 +60,8 @@ public class ServerCompute extends Thread {
                         SocketChannel client = serverSocket.accept();
                         client.configureBlocking(false);
 
+                        System.out.println(model.checkIpBlacklist(((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress()));
+
                         if (model.checkIpBlacklist(((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress())) {
 
                             client.register(selector, SelectionKey.OP_READ);
@@ -64,13 +71,15 @@ public class ServerCompute extends Thread {
                             String salonFormat = "/listSalon " + model.getSalonsFormat();
                             sendMsg(salonFormat, client);
 
-                            sendMsg(model.getLastMsg("Principal"), client);
+                            if (!model.getLastMsg("Principal").isEmpty()) {
+                                sendMsg(model.getLastMsg("Principal"), client);
+                            }
 
                         } else {
 
-                            sendMsg("/quit", client);
-                            client.close();
+                            sendMsg("/quit Le client est bani", client);
                             log.setLogContent("Connexion refuse : " + ((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress(), ServerLog.Level.WARNING, ServerLog.Facility.SERVER);
+                            client.close();
 
                         }
 
@@ -94,11 +103,16 @@ public class ServerCompute extends Thread {
                                 log.setLogContent("Le client " + ancienNom + " devient " + outputPrefix, ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
 
                                 if (ancienNom == null) {
+
                                     String clientName = "/listClient " + model.getClientsName(model.getClients("Principal"));
                                     sendMsg(clientName, client);
-                                }
+                                    sendMsg("/addClient " + model.getClients(client).getNickname(), model.getClients(model.getClients(client).getSalon()), client);
 
-                                sendMsg("/addClient " + model.getClients(client).getNickname(), model.getClients(model.getClients(client).getSalon()), client);
+                                } else {
+
+                                    sendMsg("/updateClient " + ancienNom + "," + model.getClients(client).getNickname(), client);
+
+                                }
 
                             } else {
 
@@ -152,7 +166,9 @@ public class ServerCompute extends Thread {
                             String clientName = "/listClient " + model.getClientsName(model.getClients(model.getClients(client).getSalon()));
                             sendMsg(clientName, client);
 
-                            sendMsg(model.getLastMsg(model.getClients(client).getSalon()), client);
+                            if (!model.getLastMsg(model.getClients(client).getSalon()).isEmpty()) {
+                                sendMsg(model.getLastMsg(model.getClients(client).getSalon()), client);
+                            }
 
                             log.setLogContent("Nouveau salon pour " + model.getClients(client).getNickname() + " -> Ancien : " + ancienSalon + " Nouveau : " + outputPrefix, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
@@ -182,14 +198,12 @@ public class ServerCompute extends Thread {
                             String ancienSalon=model.getClients(client).getSalon();
                             model.deleteClients(model.getClients(client));
 
-                            if (model.getClients(ancienSalon).equals(null) && ancienSalon!="Principal") {
+                            if (model.getClients(ancienSalon).isEmpty() && !ancienSalon.equals("Principal")) {
                                 model.deleteSalons(ancienSalon);
                                 gui.majClientSalon();
                             }
 
                             gui.majClientSalon();
-
-                        } else if (output.startsWith("/help", 0)) {
 
                         } else {
 
@@ -212,9 +226,23 @@ public class ServerCompute extends Thread {
 
             selector.close();
 
-        } catch (IOException e) {
+        } catch (Exception e) {
+
+            e.printStackTrace();
 
             log.setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+
+            try {
+                serverSocket.close();
+            } catch (IOException e1) {
+                log.setLogContent(e1.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+            }
+
+            try {
+                selector.close();
+            } catch (IOException e1) {
+                log.setLogContent(e1.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+            }
 
             gui.getBoutton(0).setDisable(false);
             gui.getBoutton(1).setDisable(true);
@@ -232,15 +260,20 @@ public class ServerCompute extends Thread {
         }
     }
 
-    public static void sendMsg (String msg,SocketChannel client){
+    /**
+     Affiche une boite de dialogue pour enregistrer le fichier.
+     @return Le chemin du fichier à sauvegarder
+     */
+    public void sendMsg (String msg,SocketChannel client){
 
+        msg=msg+"¨";
         byte[] message = msg.getBytes();
         ByteBuffer bufferClient = ByteBuffer.wrap(message);
 
         try {
             client.write(bufferClient);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
         }
 
         System.out.println(msg);
@@ -248,10 +281,15 @@ public class ServerCompute extends Thread {
         bufferClient.clear();
     }
 
-    public static void sendMsg (String msg,ArrayList<ServerClients> client){
+    /**
+     Affiche une boite de dialogue pour enregistrer le fichier.
+     @return Le chemin du fichier à sauvegarder
+     */
+    public void sendMsg (String msg,ArrayList<ServerClients> client){
 
         Iterator itrClientSalon=client.iterator();
 
+        msg=msg+"¨";
         byte [] message = msg.getBytes();
         ByteBuffer bufferBroadcast = ByteBuffer.wrap(message);
 
@@ -262,7 +300,7 @@ public class ServerCompute extends Thread {
             try {
                 st.getSocketChannel().write(bufferBroadcast);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
             }
 
             bufferBroadcast.rewind();
@@ -275,7 +313,11 @@ public class ServerCompute extends Thread {
 
     }
 
-    public static void sendMsg (String msg,ArrayList<ServerClients> client,SocketChannel clientChan){
+    /**
+     Affiche une boite de dialogue pour enregistrer le fichier.
+     @return Le chemin du fichier à sauvegarder
+     */
+    public void sendMsg (String msg,ArrayList<ServerClients> client,SocketChannel clientChan){
 
         Iterator itrClientSalon=client.iterator();
         ArrayList<ServerClients> clientsList=new ArrayList<ServerClients>();
@@ -289,7 +331,7 @@ public class ServerCompute extends Thread {
             }
         }
 
-        if (clientsList!=null) {
+        if (!clientsList.isEmpty()) {
             sendMsg(msg, clientsList);
         }
 

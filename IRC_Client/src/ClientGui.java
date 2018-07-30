@@ -10,7 +10,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
 import java.io.File;
 
 public class ClientGui extends Application {
@@ -244,7 +243,7 @@ public class ClientGui extends Application {
 
     public void setStatus(Status status,String msg){
 
-        if (msg=="") {
+        if (msg.equals("")) {
             labelStatus.setText("Status : " + status);
         } else {
             labelStatus.setText("Status : " + status + " msg : " + msg);

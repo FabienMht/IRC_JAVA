@@ -1,5 +1,12 @@
 import java.nio.channels.SocketChannel;
 
+/**
+ Classe qui permet d'enregistrer un client :
+    - Possède un Nickname
+    - Possède un Adresse IP
+    - Assigné à un salon
+    - Assigné à un SocketChannel
+ */
 public class ServerClients {
 
     private String nickname,ipAddress,salon;
@@ -12,6 +19,9 @@ public class ServerClients {
         this.client=d;
     }
 
+    /**
+     Getter et setter pour les attributs du client.
+     */
     public String getNickname(){
         return nickname;
     }

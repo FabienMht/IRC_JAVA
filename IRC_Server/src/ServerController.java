@@ -4,10 +4,14 @@ import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+/**
+ Classe qui gère les interaction des utilisateurs avec la GUI.
+ */
 public class ServerController {
 
     private ServerGui gui;
@@ -15,7 +19,7 @@ public class ServerController {
     private ServerLog log;
     private Stage stage;
     private ServerCompute compute;
-
+    private ServerTimeout timeout;
 
     public ServerController(ServerGui a, ServerModel b,Stage c,ServerLog d){
         this.gui=a;
@@ -25,9 +29,35 @@ public class ServerController {
         initListenners();
     }
 
+    /**
+     Méthode qui permet l'écoute des actions sur les objets de la GUI.
+     */
     private void initListenners () {
 
-        // Action event.
+        /**
+         Permet d'éteindre le serveur en cas d'arret inatendu.
+         */
+        stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+            public void handle(WindowEvent we) {
+
+                if (gui.getBoutton(0).isDisable()) {
+
+                    compute.sendMsg("/quit", model.getClients());
+
+                    model.setStop(false);
+
+                    try {
+                        model.deleteClients(model.getClients());
+                    } catch (Exception e) {
+                        log.setLogContent("Echec de deco des clients !", ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+                        return;
+                    }
+
+                    model.deleteAllSalons();
+                }
+
+            }
+        });
 
         gui.getMenuItems(0).setOnAction(new EventHandler<ActionEvent>() {
 
@@ -36,6 +66,9 @@ public class ServerController {
             }
         });
 
+        /**
+         Permet d'enregistrer le contenu des logs du textarea dans un fichier.
+         */
         gui.getMenuItems(1).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
@@ -77,6 +110,9 @@ public class ServerController {
             }
         });
 
+        /**
+         Modification du model en fonction des valeurs des choicebox.
+         */
         gui.getChoiceBox(0).valueProperty().addListener(new ChangeListener<String>() {
 
             public void changed(ObservableValue ov, String oldValue, String newValue) {
@@ -95,6 +131,21 @@ public class ServerController {
             }
         });
 
+        gui.getChoiceBox(2).valueProperty().addListener(new ChangeListener<String>() {
+
+            public void changed(ObservableValue ov, String oldValue, String newValue) {
+
+                log.setLogContent("Nombre de msg par salon : " + newValue, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+                model.setNbMsg(Integer.parseInt(newValue));
+            }
+        });
+
+        /**
+         Permet d'effectuer les actions au démarrage du serveur.
+            - Vérification des inputs
+            - Création de l'objet compute qui gère les socketchannel
+            - Modification des boutons de la gui
+         */
         gui.getBoutton(0).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
@@ -105,6 +156,7 @@ public class ServerController {
                 gui.getTextField(0).setText("127.0.0.1");
                 gui.getTextField(1).setText("27001");
 
+                // Vérification du format de l'adresse IP
                 if(checkIPAddress(gui.getTextField(0).getText())){
                     Ip=gui.getTextField(0).getText();
                 } else {
@@ -112,6 +164,7 @@ public class ServerController {
                     return;
                 }
 
+                // Vérification du format du port
                 try {
                     if (Integer.parseInt(gui.getTextField(1).getText()) < 65635 && Integer.parseInt(gui.getTextField(1).getText()) > 1024) {
                         Port = Integer.parseInt(gui.getTextField(1).getText());
@@ -127,11 +180,15 @@ public class ServerController {
 
                 log.setLogContent("Demarrage du serveur IP : " + model.getIpAddress().getHostAddress() + " Port : " + model.getPort(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
+                // Création de l'objet compute
                 compute=new ServerCompute(log,model,gui);
+                timeout=new ServerTimeout(log,model,gui,compute);
                 compute.start();
+                timeout.start();
 
                 model.setSalons("Principal");
 
+                //Modification des boutons de la gui
                 gui.getBoutton(0).setDisable(true);
                 gui.getBoutton(1).setDisable(false);
                 gui.getBoutton(2).setDisable(false);
@@ -147,13 +204,20 @@ public class ServerController {
             }
         });
 
+        /**
+         Permet d'effectuer les actions a l'arret du serveur.
+            - Déconnexion des clients / Suppression des clients dans le model
+            - Suppression de tous les salons
+            - Arret du selecteur,server socket channel
+            - Modification des boutons de la gui
+         */
         gui.getBoutton(1).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
 
                 log.setLogContent("Arret du serveur",ServerLog.Level.WARNING,ServerLog.Facility.SERVER);
 
-                ServerCompute.sendMsg("/quit",model.getClients());
+                compute.sendMsg("/quit",model.getClients());
 
                 model.setStop(false);
 
@@ -168,8 +232,7 @@ public class ServerController {
 
                 gui.majClientSalon();
 
-                model.setStop(false);
-
+                //Modification des boutons de la gui
                 gui.getBoutton(0).setDisable(false);
                 gui.getBoutton(1).setDisable(true);
                 gui.getBoutton(2).setDisable(true);
@@ -182,6 +245,9 @@ public class ServerController {
             }
         });
 
+        /**
+         Déconnexion du client selectionné dans la tableview / Suppression du client dans le modèle.
+         */
         gui.getBoutton(2).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
@@ -192,9 +258,9 @@ public class ServerController {
 
                     ServerClients client = (ServerClients) gui.getTableView().getSelectionModel().getSelectedItem();
 
-                    ServerCompute.sendMsg("/quit", client.getSocketChannel());
+                    compute.sendMsg("/quit", client.getSocketChannel());
 
-                    ServerCompute.sendMsg("/deleteClient " + client.getNickname(), model.getClients(client.getSalon()), client.getSocketChannel());
+                    compute.sendMsg("/deleteClient " + client.getNickname(), model.getClients(client.getSalon()), client.getSocketChannel());
 
                     try {
                         model.deleteClients(client);
@@ -213,6 +279,9 @@ public class ServerController {
             }
         });
 
+        /**
+         Déconnexion de tous les clients de tous les salons / Suppression des clients dans le modèle.
+         */
         gui.getBoutton(3).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
@@ -221,7 +290,7 @@ public class ServerController {
 
                     log.setLogContent("Deconnection tous les client!", ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
-                    ServerCompute.sendMsg("/quit", model.getClients());
+                    compute.sendMsg("/quit", model.getClients());
 
                     try {
                         model.deleteClients(model.getClients());
@@ -241,6 +310,11 @@ public class ServerController {
             }
         });
 
+        /**
+         Bannissement d'un client :
+            - Déconnexion de celui-ci / Suppression du client dans le modèle
+            - Ajout se l'adressse ip dans le modèle (base de données ip blacklist)
+         */
         gui.getBoutton(4).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
@@ -252,8 +326,8 @@ public class ServerController {
 
                     log.setLogContent("Client est banni : " + client.getNickname(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
-                    ServerCompute.sendMsg("/quit", client.getSocketChannel());
-                    ServerCompute.sendMsg("/deleteClient " + client.getNickname(), model.getClients(client.getSalon()), client.getSocketChannel());
+                    compute.sendMsg("/quit Deconnecte car bani", client.getSocketChannel());
+                    compute.sendMsg("/deleteClient " + client.getNickname(), model.getClients(client.getSalon()), client.getSocketChannel());
 
                     model.setBlackList(client.getIpAddress());
 
@@ -275,6 +349,11 @@ public class ServerController {
             }
         });
 
+        /**
+         Suppression du salon séléctionné dans la listview:
+            - Déconnexion de tous les clients / Suppression du client dans le modèle
+            - Supression du salon dans le modèle et maj de la GUI
+         */
         gui.getBoutton(5).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
@@ -289,7 +368,7 @@ public class ServerController {
 
                     log.setLogContent("Salon supp : " + salonSupp, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
-                    ServerCompute.sendMsg("/quit", model.getClients(salonSupp));
+                    compute.sendMsg("/quit", model.getClients(salonSupp));
 
                     try {
                         model.deleteClients(model.getClients(salonSupp));
@@ -301,7 +380,7 @@ public class ServerController {
                     model.deleteSalons(salonSupp);
                     gui.majClientSalon();
 
-                    ServerCompute.sendMsg("/deleteSalon" + salonSupp ,model.getClients());
+                    compute.sendMsg("/deleteSalon" + salonSupp ,model.getClients());
 
                 } else {
 
@@ -311,6 +390,9 @@ public class ServerController {
             }
         });
 
+        /**
+         Permet de supprimer une IP dans la blacklist.
+         */
         gui.getBoutton(6).setOnAction(new EventHandler<ActionEvent>() {
 
             public void handle(ActionEvent event) {
@@ -335,6 +417,10 @@ public class ServerController {
 
     }
 
+    /**
+     Vérifie si une chaine de caractère est au format d'une adresse IP.
+     @return Vrai si format ok et faux sinon
+     */
     public boolean checkIPAddress( String ipAddress ) {
 
         String[] tokens = ipAddress.split("\\.");

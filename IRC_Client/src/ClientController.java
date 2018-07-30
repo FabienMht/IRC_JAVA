@@ -5,6 +5,8 @@ import javafx.event.EventHandler;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -30,6 +32,19 @@ public class ClientController {
     private void initListenners () {
 
         // Action event.
+
+        stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+            public void handle(WindowEvent we) {
+
+                if (gui.getBoutton(0).isDisable()) {
+
+                    ClientCompute.sendMsg("/quit", model.getClientSocket());
+
+                    model.setStop(false);
+                }
+
+            }
+        });
 
         gui.getMenuItems(0).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) { ;
@@ -110,7 +125,7 @@ public class ClientController {
                 gui.majClient();
                 gui.majSalon();
 
-                gui.setStatus(ClientGui.Status.Connected,"Salon : " + model.getSalonWork());
+                gui.setStatus(ClientGui.Status.Connected,"Salon " + model.getSalonWork());
 
             }
         });
@@ -123,8 +138,10 @@ public class ClientController {
 
         gui.getBoutton(2).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
-                checkSalon(gui.getTextField(3).getText());
-                gui.getTextField(3).clear();
+                if (!gui.getTextField(3).getText().equals("")) {
+                    checkSalon(gui.getTextField(3).getText());
+                    gui.getTextField(3).clear();
+                }
             }
         });
 
@@ -133,8 +150,10 @@ public class ClientController {
             {
                 if(gui.getBoutton(0).isDisable()) {
                     if (ke.getCode().equals(KeyCode.ENTER)) {
-                        checkSalon(gui.getTextField(3).getText());
-                        gui.getTextField(3).clear();
+                        if (!gui.getTextField(3).getText().equals("")) {
+                            checkSalon(gui.getTextField(3).getText());
+                            gui.getTextField(3).clear();
+                        }
                     }
                 }
             }
@@ -168,7 +187,7 @@ public class ClientController {
                             gui.getAreaMsg().clear();
 
                             model.setSalonWork(new_val);
-                            gui.setStatus(ClientGui.Status.Connected,"Salon : " + model.getSalonWork());
+                            gui.setStatus(ClientGui.Status.Connected,"Salon " + model.getSalonWork());
 
                         }
 
@@ -187,6 +206,8 @@ public class ClientController {
         } else if (msg.startsWith("/setNickname",0)) {
 
             ClientCompute.sendMsg(msg, model.getClientSocket());
+            model.updateNickname(model.getNickname(),msg.replaceFirst("/setNickname","").trim());
+            gui.majClient();
 
         } else if (msg.startsWith("/addSalon",0)) {
 

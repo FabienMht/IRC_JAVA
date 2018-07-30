@@ -1,3 +1,4 @@
+import javafx.application.Platform;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -35,6 +36,11 @@ public class ClientCompute extends Thread {
 
             while (model.getStop()) {
 
+                if (!clientSocket.isConnected()){
+                    System.out.println("Deco");
+                    model.setStop(false);
+                }
+
                 int numberKeys = selector.select(500);
 
                 Set<SelectionKey> selectedKeys = selector.selectedKeys();
@@ -53,94 +59,114 @@ public class ClientCompute extends Thread {
 
                         String output = new String(buffer.array()).trim();
                         System.out.println(output);
+                        String[] outputSplit = output.split("¨");
 
-                        if (output.startsWith("/listClient",0)) {
+                        for (String commande : outputSplit) {
 
-                            model.deleteAllClients();
+                            if (commande.startsWith("/listClient", 0)) {
 
-                            String outputPrefix = new String(output.replaceFirst("/listClient","")).trim();
+                                model.deleteAllClients();
 
-                            String[] listClient=outputPrefix.split(",");
+                                String outputPrefix = new String(commande.replaceFirst("/listClient", "")).trim();
 
-                            for (String s : listClient) {
-                                model.setClients(s);
+                                String[] listClient = outputPrefix.split(",");
+
+                                for (String s : listClient) {
+                                    model.setClients(s);
+                                }
+
+                                gui.majClient();
+                            } else if (commande.startsWith("/listSalon", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/listSalon", "")).trim();
+
+                                String[] listSalon = outputPrefix.split(",");
+
+                                for (String s : listSalon) {
+                                    model.setSalons(s);
+                                }
+
+                                gui.majSalon();
+
+                            } else if (commande.startsWith("/addClient", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/addClient", "")).trim();
+
+                                model.setClients(outputPrefix);
+
+                                gui.majClient();
+
+                            } else if (commande.startsWith("/updateClient", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/addClient", "")).trim();
+
+                                String[] split = outputPrefix.split(",", 2);
+
+                                model.updateNickname(split[0], split[1]);
+
+                                gui.majClient();
+
+                            } else if (commande.startsWith("/deleteClient", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/deleteClient", "")).trim();
+
+                                model.deleteClients(outputPrefix);
+
+                                gui.majClient();
+
+                            } else if (commande.startsWith("/addSalon", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/addSalon", "")).trim();
+
+                                model.setSalons(outputPrefix);
+
+                                gui.majSalon();
+
+                            } else if (commande.startsWith("/deleteSalon", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/deleteSalon", "")).trim();
+
+                                model.deleteSalons(outputPrefix);
+
+                                gui.majSalon();
+
+                            } else if (commande.startsWith("/erreur", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/erreur", "")).trim();
+
+                                gui.setStatus(ClientGui.Status.Error, outputPrefix);
+
+                            } else if (commande.startsWith("/quit", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/quit", "")).trim();
+
+                                Platform.runLater(new Runnable() {
+                                    public void run() {
+                                        gui.setStatus(ClientGui.Status.Disconnected, outputPrefix);
+                                    }
+                                });
+
+                                model.setStop(false);
+
+                                model.deleteAllClients();
+                                model.deleteAllSalons();
+
+                                gui.majClient();
+                                gui.majSalon();
+
+                                gui.getAreaMsg().clear();
+
+                                gui.getBoutton(0).setDisable(false);
+                                gui.getBoutton(1).setDisable(true);
+                                gui.getBoutton(2).setDisable(true);
+                                gui.getBoutton(3).setDisable(true);
+
+                            } else {
+
+                                String outputPrefix = new String(commande).trim();
+                                gui.setTextMsg(outputPrefix);
+                                gui.setTextMsg("\n");
                             }
-
-                            gui.majClient();
-                        }
-
-                        else if (output.startsWith("/listSalon",0)) {
-
-                            String outputPrefix = new String(output.replaceFirst("/listSalon","")).trim();
-
-                            String[] listSalon=outputPrefix.split(",");
-
-                            for (String s : listSalon) {
-                                model.setSalons(s);
-                            }
-
-                            gui.majSalon();
-
-                        } else if (output.startsWith("/addClient",0)) {
-
-                            String outputPrefix = new String(output.replaceFirst("/addClient","")).trim();
-
-                            model.setClients(outputPrefix);
-
-                            gui.majClient();
-
-                        } else if (output.startsWith("/deleteClient",0)) {
-
-                            String outputPrefix = new String(output.replaceFirst("/deleteClient","")).trim();
-
-                            model.deleteClients(outputPrefix);
-
-                            gui.majClient();
-
-                        } else if (output.startsWith("/addSalon",0)) {
-
-                            String outputPrefix = new String(output.replaceFirst("/addSalon","")).trim();
-
-                            model.setSalons(outputPrefix);
-
-                            gui.majSalon();
-
-                        } else if (output.startsWith("/deleteSalon",0)) {
-
-                            String outputPrefix = new String(output.replaceFirst("/deleteSalon","")).trim();
-
-                            model.deleteSalons(outputPrefix);
-
-                            gui.majSalon();
-
-                        } else if (output.startsWith("/erreur",0)) {
-
-                            String outputPrefix = new String(output.replaceFirst("/erreur","")).trim();
-
-                            gui.setStatus(ClientGui.Status.Error,outputPrefix);
-
-                        } else if (output.startsWith("/quit",0)) {
-
-                            model.setStop(false);
-
-                            model.deleteAllClients();
-                            model.deleteAllSalons();
-
-                            gui.majClient();
-                            gui.majSalon();
-
-                            gui.getAreaMsg().clear();
-
-                            gui.getBoutton(0).setDisable(false);
-                            gui.getBoutton(1).setDisable(true);
-                            gui.getBoutton(2).setDisable(true);
-                            gui.getBoutton(3).setDisable(true);
-
-                        } else {
-
-                            String outputPrefix = new String(output).trim();
-                            gui.setTextMsg(outputPrefix);
-                            gui.setTextMsg("\n");
                         }
 
                     }
@@ -155,7 +181,11 @@ public class ClientCompute extends Thread {
 
         } catch (Exception e) {
 
-            gui.setStatus(ClientGui.Status.Error,"Connection refused");
+            Platform.runLater(new Runnable() {
+                public void run() {
+                    gui.setStatus(ClientGui.Status.Error,"Connection refused");
+                }
+            });
 
             gui.getBoutton(0).setDisable(false);
             gui.getBoutton(1).setDisable(true);
