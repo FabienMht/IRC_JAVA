@@ -60,6 +60,10 @@ public class ClientController {
 
                         model.setStop(false);
 
+                    } else {
+
+                        we.consume();
+
                     }
 
                 }

@@ -67,6 +67,10 @@ public class ServerController {
 
                         model.deleteAllSalons();
 
+                    } else {
+
+                        we.consume();
+
                     }
                 }
 
