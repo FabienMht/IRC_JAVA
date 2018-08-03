@@ -12,8 +12,14 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import java.io.File;
 
+/**
+ Classe qui permet de gérer la partie graphique de l'application.
+ */
 public class ClientGui extends Application {
 
+    /**
+     Déclaration des composants graphique qui vont être utilisés par les méthode de la classe.
+     */
     public enum Status { Connected, Disconnected, Error }
 
     private TextArea textAreaMsg = new TextArea();
@@ -33,9 +39,8 @@ public class ClientGui extends Application {
     private ListView<String> listSalon = new ListView<String>();
     private ListView<String> listClient = new ListView<String>();
 
-    private MenuItem itemSaveLog = new MenuItem("Save Log");
+    private MenuItem itemSaveLog = new MenuItem("Save Msg");
     private MenuItem itemLicence = new MenuItem("Licence");
-    private MenuItem itemQuitter = new MenuItem("Quitter");
 
     private Label labelStatus = new Label("Status");
 
@@ -46,6 +51,9 @@ public class ClientGui extends Application {
         launch(args);
     }
 
+    /**
+     Permet de générer la fenêtre graphique à partir de la stage.
+     */
     public void start(Stage primaryStage) throws Exception {
 
         //Déclaration du menu
@@ -54,25 +62,31 @@ public class ClientGui extends Application {
         Menu menuFichier = new Menu("Fichier");
         Menu menuAide = new Menu("Aide");
 
-        menuFichier.getItems().addAll(itemSaveLog,itemQuitter);
+        menuFichier.getItems().addAll(itemSaveLog);
         menuAide.getItems().addAll(itemLicence);
 
         menuBar.getMenus().addAll(menuFichier,menuAide);
 
+        //Active et désactive les bouttons en fonction de l'état du serveur (démarré ou arreté)
         butDisconnect.setDisable(true);
         butSend.setDisable(true);
         butSalon.setDisable(true);
         butSalon.setPrefWidth(60);
 
-        // Dec
+        //Modification des proprietés de la zone d'affichage des logs
         textAreaMsg.setEditable(false);
         textAreaMsg.setPrefHeight(500);
         textAreaMsg.setPrefWidth(600);
         textMsg.setPrefWidth(500);
+        textAreaMsg.setWrapText(true);
 
+        //Affiche l'aide dans les textbox
         textIP.setPromptText("0-255.0-255.0-255.0-255");
         textPort.setPromptText("1024 < port < 65534");
 
+        setStatus(ClientGui.Status.Disconnected,"");
+
+        //Déclaration des labels
         Label labelIP = new Label("IP :");
         Label labelPort = new Label("Port :");
         Label labelName = new Label("Nickname :");
@@ -124,9 +138,10 @@ public class ClientGui extends Application {
 
         vboxAll.getChildren().addAll(menuBar,hboxInput,hboxCore,hboxLogStatusBar);
 
+        //Création du controlleur
         ClientController controlleur = new ClientController(this,model,primaryStage);
 
-        Scene scene = new Scene(vboxAll,1000,800);
+        Scene scene = new Scene(vboxAll,1000,700);
 
         primaryStage.setScene(scene);
         primaryStage.setTitle("ClientGui");
@@ -135,6 +150,9 @@ public class ClientGui extends Application {
 
     }
 
+    /**
+     Retourne un objet boutton en fonction de l'entier en paramètre.
+     */
     public Button getBoutton(int a) {
         if (a==0) {
             return butConnect;
@@ -149,18 +167,22 @@ public class ClientGui extends Application {
         }
     }
 
+    /**
+     Retourne un objet Menuitems en fonction de l'entier en paramètre.
+     */
     public MenuItem getMenuItems(int a){
-        if (a==0) {
-            return itemQuitter;
-        } else if (a==1) {
+        if (a==1) {
             return itemSaveLog;
         } else if (a==2) {
             return itemLicence;
         } else {
-            return itemQuitter;
+            return itemSaveLog;
         }
     }
 
+    /**
+     Retourne un objet Textfield en fonction de l'entier en paramètre.
+     */
     public TextField getTextField(int a) {
         if (a==0) {
             return textIP;
@@ -177,6 +199,9 @@ public class ClientGui extends Application {
         }
     }
 
+    /**
+     Retourne un objet listview en fonction de l'entier en paramètre.
+     */
     public ListView getListView(int a) {
         if (a==0) {
             return listSalon;
@@ -187,21 +212,35 @@ public class ClientGui extends Application {
         }
     }
 
+    /**
+     Retourne l'objet textarea qui affiche les msgs.
+     */
     public TextArea getAreaMsg() {
         return textAreaMsg;
     }
 
+    /**
+     Retourne le contenu des msgs affiché à l'écran.
+     */
     public String getTextMsg() {
         return textAreaMsg.getText();
     }
 
+    /**
+     Permet d'ajouter des msgs à l'écran.
+     */
     public void setTextMsg(String a){
         textAreaMsg.appendText(a);
     }
 
+    /**
+     Affiche la fenêtre de la licence de l'app.
+     */
     public void setLicenceWindow(){
 
-        Label labelLicence = new Label("Name");
+        Label labelLicence = new Label("Fabien Mauhourat \n" +
+                "Steven Nguyen \n" +
+                "Licence GPL v3");
 
         BorderPane bpLicence = new BorderPane();
         bpLicence.setPadding(new Insets(10, 20, 10, 20));
@@ -217,6 +256,10 @@ public class ClientGui extends Application {
 
     }
 
+    /**
+     Affiche une boite de dialogue pour enregistrer le fichier.
+     @return Le chemin du fichier à sauvegarder
+     */
     public File showMsgSaver(Stage stage){
 
         FileChooser fileChooser = new FileChooser();
@@ -230,17 +273,27 @@ public class ClientGui extends Application {
 
     }
 
+    /**
+     Mets à jour la liste des clients.
+     */
     public void majClient (){
 
         getListView(1).setItems(FXCollections.observableList(model.getClients()));
 
     }
+
+    /**
+     Mets à jour la liste des salons.
+     */
     public void majSalon (){
 
         getListView(0).setItems(FXCollections.observableList(model.getSalons()));
 
     }
 
+    /**
+     Modifie le status de la GUI.
+     */
     public void setStatus(Status status,String msg){
 
         if (msg.equals("")) {

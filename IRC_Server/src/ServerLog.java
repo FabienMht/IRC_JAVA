@@ -12,7 +12,7 @@ public class ServerLog {
     private int i;
 
     // Formatage de la data pour les logs
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("E, dd MMM hh:mm:ss");
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("E, dd MMM HH:mm:ss");
 
     // Defini des niveaux des logs (Syslog)
     public enum Level { DEBUG, INFO , WARNING , ERROR}

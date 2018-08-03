@@ -1,3 +1,4 @@
+import javafx.application.Platform;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -9,6 +10,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
 
+/**
+ Classe qui permet de gérer les socketchannel à l'aide d 'un thread
+ */
 public class ServerCompute extends Thread {
 
     private ServerLog log;
@@ -25,15 +29,14 @@ public class ServerCompute extends Thread {
     }
 
     /**
-     Affiche une boite de dialogue pour enregistrer le fichier.
-     @return Le chemin du fichier à sauvegarder
+     Méthode run qui permet d'initialiser le selecteur et le serversocket channel
      */
     public void run() {
 
         try {
 
             selector = Selector.open();
-            log.setLogContent("Selecteur pret pour nouvelle connexion : " + selector.isOpen(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+            setLogContent("Selecteur pret pour nouvelle connexion : " + selector.isOpen(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
             serverSocket = ServerSocketChannel.open();
             InetSocketAddress hostAddress = new InetSocketAddress(model.getIpAddress(),model.getPort());
@@ -60,13 +63,11 @@ public class ServerCompute extends Thread {
                         SocketChannel client = serverSocket.accept();
                         client.configureBlocking(false);
 
-                        System.out.println(model.checkIpBlacklist(((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress()));
-
                         if (model.checkIpBlacklist(((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress())) {
 
                             client.register(selector, SelectionKey.OP_READ);
                             model.setClients(((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress(), "Principal", client);
-                            log.setLogContent("Nouvelle connexion Client : " + ((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+                            setLogContent("Nouvelle connexion Client : " + ((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
                             String salonFormat = "/listSalon " + model.getSalonsFormat();
                             sendMsg(salonFormat, client);
@@ -78,7 +79,7 @@ public class ServerCompute extends Thread {
                         } else {
 
                             sendMsg("/quit Le client est bani", client);
-                            log.setLogContent("Connexion refuse : " + ((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress(), ServerLog.Level.WARNING, ServerLog.Facility.SERVER);
+                            setLogContent("Connexion refuse : " + ((InetSocketAddress) client.getRemoteAddress()).getAddress().getHostAddress(), ServerLog.Level.WARNING, ServerLog.Facility.SERVER);
                             client.close();
 
                         }
@@ -90,131 +91,136 @@ public class ServerCompute extends Thread {
                         client.read(buffer);
 
                         String output = new String(buffer.array()).trim();
+                        String[] outputSplit = output.split("¨");
 
-                        if (output.startsWith("/setNickname", 0)) {
+                        for (String commande : outputSplit) {
 
-                            String outputPrefix = new String(output.replaceFirst("/setNickname", "")).trim();
-                            String ancienNom = model.getClients(client).getNickname();
+                            if (commande.startsWith("/setNickname", 0)) {
 
-                            if (model.checkName(outputPrefix,client)) {
+                                String outputPrefix = new String(commande.replaceFirst("/setNickname", "")).trim();
+                                String ancienNom = model.getClients(client).getNickname();
 
-                                model.getClients(client).setNickname(outputPrefix);
-                                gui.majClientSalon();
-                                log.setLogContent("Le client " + ancienNom + " devient " + outputPrefix, ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
+                                if (model.checkName(outputPrefix, client)) {
 
-                                if (ancienNom == null) {
+                                    model.getClients(client).setNickname(outputPrefix);
 
-                                    String clientName = "/listClient " + model.getClientsName(model.getClients("Principal"));
-                                    sendMsg(clientName, client);
-                                    sendMsg("/addClient " + model.getClients(client).getNickname(), model.getClients(model.getClients(client).getSalon()), client);
+                                    majClientSalon();
+
+                                    setLogContent("Le client " + ancienNom + " devient " + outputPrefix, ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
+
+                                    if (ancienNom == null) {
+
+                                        String clientName = "/listClient " + model.getClientsName(model.getClients("Principal"));
+                                        sendMsg(clientName, client);
+                                        sendMsg("/addClient " + model.getClients(client).getNickname(), model.getClients(model.getClients(client).getSalon()), client);
+
+                                    } else {
+
+                                        sendMsg("/updateClient " + ancienNom + "," + model.getClients(client).getNickname(), model.getClients(), client);
+
+                                    }
 
                                 } else {
 
-                                    sendMsg("/updateClient " + ancienNom + "," + model.getClients(client).getNickname(), client);
+                                    if (ancienNom == null) {
+                                        sendMsg("/quit Pseudo deja utilise", client);
+                                        model.deleteClients(model.getClients(client));
+                                    } else {
+                                        sendMsg("/erreur Pseudo deja utilise", client);
+                                    }
 
                                 }
 
-                            } else {
+                            } else if (commande.startsWith("/getNickname", 0)) {
 
-                                if (ancienNom == null) {
-                                    sendMsg("/quit Pseudo deja utilise", client);
+                                String outputPrefix = new String(commande.replaceFirst("/getNickname", "")).trim();
+
+                                String clientName = "/listClient " + model.getClientsName(model.getClients(outputPrefix));
+                                sendMsg(clientName, client);
+
+                                setLogContent("Liste clients de :" + outputPrefix + " pour " + model.getClients(client).getNickname(), ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
+
+                            } else if (commande.startsWith("/getSalon", 0)) {
+
+                                String salonFormat = "/listSalon " + model.getSalonsFormat();
+                                sendMsg(salonFormat, client);
+
+                                setLogContent("Liste salons pour : " + model.getClients(client).getNickname(), ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
+
+                            } else if (commande.startsWith("/setSalon", 0)) {
+
+                                String outputPrefix = new String(commande.replaceFirst("/setSalon", "")).trim();
+                                String ancienSalon = model.getClients(client).getSalon();
+
+                                model.getClients(client).setSalon(outputPrefix);
+
+                                if (model.getClients(ancienSalon).isEmpty() && !ancienSalon.equals("Principal")) {
+
+                                    model.deleteSalons(ancienSalon);
+                                    sendMsg("/deleteSalon" + ancienSalon, model.getClients());
+
                                 } else {
-                                    sendMsg("/erreur Pseudo deja utilise", client);
+                                    sendMsg("/deleteClient " + model.getClients(client).getNickname(), model.getClients(ancienSalon));
                                 }
 
-                            }
+                                majClientSalon();
 
-                        } else if (output.startsWith("/getNickname", 0)) {
+                                sendMsg("/addClient " + model.getClients(client).getNickname(), model.getClients(model.getClients(client).getSalon()), client);
 
-                            String outputPrefix = new String(output.replaceFirst("/getNickname", "")).trim();
+                                String clientName = "/listClient " + model.getClientsName(model.getClients(model.getClients(client).getSalon()));
+                                sendMsg(clientName, client);
 
-                            System.out.println(outputPrefix);
-                            System.out.println(model.getClients(outputPrefix));
-                            String clientName = "/listClient " + model.getClientsName(model.getClients(outputPrefix));
-                            sendMsg(clientName, client);
+                                if (!model.getLastMsg(model.getClients(client).getSalon()).isEmpty()) {
+                                    sendMsg(model.getLastMsg(model.getClients(client).getSalon()), client);
+                                }
 
-                            log.setLogContent("Liste clients de :" + outputPrefix + " pour " + model.getClients(client).getNickname(), ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
+                                setLogContent("Nouveau salon pour " + model.getClients(client).getNickname() + " -> Ancien : " + ancienSalon + " Nouveau : " + outputPrefix, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
 
-                        } else if (output.startsWith("/getSalon", 0)) {
+                            } else if (commande.startsWith("/addSalon", 0)) {
 
-                            String salonFormat = "/listSalon " + model.getSalonsFormat();
-                            sendMsg(salonFormat, client);
+                                String outputPrefix = new String(commande.replaceFirst("/addSalon", "")).trim();
 
-                            log.setLogContent("Liste salons pour : " + model.getClients(client).getNickname(), ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
+                                if (model.checkSalon(outputPrefix)) {
 
-                        } else if (output.startsWith("/setSalon", 0)) {
+                                    model.setSalons(outputPrefix);
 
-                            String outputPrefix = new String(output.replaceFirst("/setSalon", "")).trim();
-                            String ancienSalon = model.getClients(client).getSalon();
+                                    majClientSalon();
 
-                            model.getClients(client).setSalon(outputPrefix);
+                                    sendMsg("/addSalon " + outputPrefix, model.getClients());
 
-                            if (model.getClients(ancienSalon).isEmpty() && !ancienSalon.equals("Principal")) {
+                                    setLogContent("Ajout salon " + outputPrefix + " par " + model.getClients(client).getNickname(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
+                                } else {
+                                    sendMsg("/erreur Salon deja cree", client);
+                                }
 
-                                model.deleteSalons(ancienSalon);
-                                gui.majClientSalon();
-                                sendMsg("/deleteSalon" + ancienSalon ,model.getClients());
+                            } else if (commande.startsWith("/quit", 0)) {
+
+                                setLogContent("Deconnexion client : " + model.getClients(client).getNickname(), ServerLog.Level.WARNING, ServerLog.Facility.SERVER);
+
+                                sendMsg("/quit", client);
+                                sendMsg("/deleteClient " + model.getClients(client).getNickname(), model.getClients(model.getClients(client).getSalon()), client);
+                                client.close();
+
+                                String ancienSalon = model.getClients(client).getSalon();
+                                model.deleteClients(model.getClients(client));
+
+                                if (model.getClients(ancienSalon).isEmpty() && !ancienSalon.equals("Principal")) {
+                                    model.deleteSalons(ancienSalon);
+                                }
+
+                                majClientSalon();
 
                             } else {
-                                sendMsg("/deleteClient " + model.getClients(client).getNickname(),model.getClients(ancienSalon));
+
+                                setLogContent(commande, ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
+
+                                String salonWrite = model.getClients(client).getSalon();
+
+                                sendMsg(commande, model.getClients(salonWrite), client);
+
+                                model.setLastMsg(commande, salonWrite);
+
                             }
-
-                            gui.majClientSalon();
-
-                            sendMsg("/addClient " + model.getClients(client).getNickname(),model.getClients(model.getClients(client).getSalon()),client);
-
-                            String clientName = "/listClient " + model.getClientsName(model.getClients(model.getClients(client).getSalon()));
-                            sendMsg(clientName, client);
-
-                            if (!model.getLastMsg(model.getClients(client).getSalon()).isEmpty()) {
-                                sendMsg(model.getLastMsg(model.getClients(client).getSalon()), client);
-                            }
-
-                            log.setLogContent("Nouveau salon pour " + model.getClients(client).getNickname() + " -> Ancien : " + ancienSalon + " Nouveau : " + outputPrefix, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
-
-                        } else if (output.startsWith("/addSalon", 0)) {
-
-                            String outputPrefix = new String(output.replaceFirst("/addSalon", "")).trim();
-
-                            if (model.checkSalon(outputPrefix)) {
-
-                                model.setSalons(outputPrefix);
-                                gui.majClientSalon();
-                                sendMsg("/addSalon " + outputPrefix, model.getClients(), client);
-
-                                log.setLogContent("Ajout salon " + outputPrefix + " par " + model.getClients(client).getNickname(), ServerLog.Level.INFO, ServerLog.Facility.SERVER);
-                            } else {
-                                sendMsg("/erreur Salon deja cree", client);
-                            }
-
-                        } else if (output.startsWith("/quit", 0)) {
-
-                            log.setLogContent("Deconnexion client : " + model.getClients(client).getNickname(), ServerLog.Level.WARNING, ServerLog.Facility.SERVER);
-
-                            sendMsg("/quit",client);
-                            sendMsg("/deleteClient " + model.getClients(client).getNickname(),model.getClients(model.getClients(client).getSalon()),client);
-                            client.close();
-
-                            String ancienSalon=model.getClients(client).getSalon();
-                            model.deleteClients(model.getClients(client));
-
-                            if (model.getClients(ancienSalon).isEmpty() && !ancienSalon.equals("Principal")) {
-                                model.deleteSalons(ancienSalon);
-                                gui.majClientSalon();
-                            }
-
-                            gui.majClientSalon();
-
-                        } else {
-
-                            log.setLogContent(output, ServerLog.Level.DEBUG, ServerLog.Facility.SERVER);
-
-                            String salonWrite=model.getClients(client).getSalon();
-
-                            sendMsg(output,model.getClients(salonWrite),client);
-
-                            model.setLastMsg(output,salonWrite);
-
                         }
 
                     }
@@ -228,41 +234,46 @@ public class ServerCompute extends Thread {
 
         } catch (Exception e) {
 
-            e.printStackTrace();
-
-            log.setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+            setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
 
             try {
                 serverSocket.close();
             } catch (IOException e1) {
-                log.setLogContent(e1.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+                setLogContent(e1.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
             }
 
             try {
                 selector.close();
             } catch (IOException e1) {
-                log.setLogContent(e1.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+                setLogContent(e1.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
             }
 
-            gui.getBoutton(0).setDisable(false);
-            gui.getBoutton(1).setDisable(true);
-            gui.getBoutton(2).setDisable(true);
-            gui.getBoutton(3).setDisable(true);
-            gui.getBoutton(4).setDisable(true);
-            gui.getBoutton(5).setDisable(true);
-            gui.getBoutton(6).setDisable(true);
+            Platform.runLater(new Runnable() {
+                public void run() {
+                    gui.getBoutton(0).setDisable(false);
+                    gui.getBoutton(1).setDisable(true);
+                    gui.getBoutton(2).setDisable(true);
+                    gui.getBoutton(3).setDisable(true);
+                    gui.getBoutton(4).setDisable(true);
+                    gui.getBoutton(5).setDisable(true);
+                    gui.getBoutton(6).setDisable(true);
+                }
+            });
 
             model.deleteAllClients();
             model.deleteAllSalons();
 
-            gui.majClientSalon();
+            Platform.runLater(new Runnable() {
+                public void run() {
+                    majClientSalon();
+                }
+            });
 
         }
     }
 
     /**
-     Affiche une boite de dialogue pour enregistrer le fichier.
-     @return Le chemin du fichier à sauvegarder
+     Permet d'envoyer un msg à un client dont le socketchannel est donné en paramètre
      */
     public void sendMsg (String msg,SocketChannel client){
 
@@ -273,17 +284,14 @@ public class ServerCompute extends Thread {
         try {
             client.write(bufferClient);
         } catch (IOException e) {
-            log.setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+            setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
         }
-
-        System.out.println(msg);
 
         bufferClient.clear();
     }
 
     /**
-     Affiche une boite de dialogue pour enregistrer le fichier.
-     @return Le chemin du fichier à sauvegarder
+     Permet d'envoyer un msg à une liste de client donné en paramètre
      */
     public void sendMsg (String msg,ArrayList<ServerClients> client){
 
@@ -300,7 +308,7 @@ public class ServerCompute extends Thread {
             try {
                 st.getSocketChannel().write(bufferBroadcast);
             } catch (IOException e) {
-                log.setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+                setLogContent(e.getMessage(), ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
             }
 
             bufferBroadcast.rewind();
@@ -309,13 +317,10 @@ public class ServerCompute extends Thread {
 
         bufferBroadcast.clear();
 
-        System.out.println(msg);
-
     }
 
     /**
-     Affiche une boite de dialogue pour enregistrer le fichier.
-     @return Le chemin du fichier à sauvegarder
+     Permet d'envoyer un msg à une liste de client en exluant le client donné en paramètre
      */
     public void sendMsg (String msg,ArrayList<ServerClients> client,SocketChannel clientChan){
 
@@ -335,6 +340,35 @@ public class ServerCompute extends Thread {
             sendMsg(msg, clientsList);
         }
 
+    }
+
+    public void setLogContent (String msg, ServerLog.Level level , ServerLog.Facility facility){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+                log.setLogContent(msg, level, facility);
+            }
+        });
+
+    }
+
+    public void majClientSalon (){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+                gui.majClientSalon();
+            }
+        });
+
+    }
+
+    public void setStatus(ServerLog.Status status, String msg){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+                gui.setStatus(status,msg);
+            }
+        });
     }
 
 }

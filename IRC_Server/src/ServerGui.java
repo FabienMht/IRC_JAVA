@@ -36,7 +36,6 @@ public class ServerGui extends Application {
     private TextField textIP = new TextField ();
     private TextField textPort = new TextField ();
     private ChoiceBox boxLog = new ChoiceBox(FXCollections.observableArrayList("ERROR","WARNING", "INFO", "DEBUG"));
-    private ChoiceBox timeout = new ChoiceBox(FXCollections.observableArrayList("1","5", "10", "60"));
     private ChoiceBox nbMsg = new ChoiceBox(FXCollections.observableArrayList("10","20", "30"));
 
     private TableView tableClient = new TableView();
@@ -46,7 +45,6 @@ public class ServerGui extends Application {
     private MenuItem itemBanClient = new MenuItem("Blacklist Client");
     private MenuItem itemLicence = new MenuItem("Licence");
     private MenuItem itemCleanLog = new MenuItem("Clean Msg");
-    private MenuItem itemQuitter = new MenuItem("Quitter");
 
     private ListView<String> listBlacklist = new ListView<String>();
     private Button butDeleteBlacklist = new Button("Delete Client");
@@ -72,7 +70,7 @@ public class ServerGui extends Application {
         Menu menuView = new Menu("View");
         Menu menuAide = new Menu("Aide");
 
-        menuFichier.getItems().addAll(itemSaveLog,itemQuitter);
+        menuFichier.getItems().addAll(itemSaveLog);
         menuView.getItems().addAll(itemCleanLog,itemBanClient);
         menuAide.getItems().addAll(itemLicence);
 
@@ -90,7 +88,8 @@ public class ServerGui extends Application {
         //Modification des proprietés de la zone d'affichage des logs
         textAreaLog.setEditable(false);
         textAreaLog.setPrefHeight(500);
-        textAreaLog.setPrefWidth(600);
+        textAreaLog.setPrefWidth(650);
+        textAreaLog.setWrapText(true);
 
         //Affiche l'aide dans les textbox
         textIP.setPromptText("0-255.0-255.0-255.0-255");
@@ -98,14 +97,12 @@ public class ServerGui extends Application {
 
         //Modification de la valeur par défaut des combobox
         boxLog.setValue("DEBUG");
-        timeout.setValue("1");
         nbMsg.setValue("10");
 
         //Déclaration des labels
         Label labelIP = new Label("IP :");
         Label labelPort = new Label("Port :");
         Label labelLog = new Label("LogLevel :");
-        Label labelTimeout = new Label("TimeOut(min) :");
         Label labelNbMsg = new Label("NbMsg :");
 
         Label labelClient = new Label("Clients");
@@ -150,7 +147,7 @@ public class ServerGui extends Application {
         VBox vboxClientSalon = new VBox(10);
         vboxClientSalon.setAlignment(Pos.CENTER);
 
-        hboxInput.getChildren().addAll(labelIP,textIP,labelPort,textPort,labelLog,boxLog,labelTimeout,timeout,labelNbMsg,nbMsg,butStart,butStop);
+        hboxInput.getChildren().addAll(labelIP,textIP,labelPort,textPort,labelLog,boxLog,labelNbMsg,nbMsg,butStart,butStop);
         hboxClient.getChildren().addAll(butDisconnect,butDisconnectAll,butBan);
         hboxSalon.getChildren().addAll(butDelete);
         hboxLogClient.getChildren().addAll(textAreaLog,vboxClientSalon);
@@ -199,9 +196,7 @@ public class ServerGui extends Application {
      Retourne un objet Menuitems en fonction de l'entier en paramètre.
      */
     public MenuItem getMenuItems(int a){
-        if (a==0) {
-            return itemQuitter;
-        } else if (a==1) {
+        if (a==1) {
             return itemSaveLog;
         } else if (a==2) {
             return itemBanClient;
@@ -210,7 +205,7 @@ public class ServerGui extends Application {
         } else if (a==4) {
             return itemLicence;
         } else {
-            return itemQuitter;
+            return itemSaveLog;
         }
     }
 
@@ -234,8 +229,6 @@ public class ServerGui extends Application {
         if (a==0) {
             return boxLog;
         } else if (a==1) {
-            return timeout;
-        } else if (a==2) {
             return nbMsg;
         }else {
             return boxLog;
@@ -295,7 +288,9 @@ public class ServerGui extends Application {
      */
     public void setLicenceWindow(){
 
-        Label labelLicence = new Label("Name");
+        Label labelLicence = new Label("Fabien Mauhourat \n" +
+                "Steven Nguyen \n" +
+                "Licence GPL v3");
 
         BorderPane bpLicence = new BorderPane();
         bpLicence.setPadding(new Insets(10, 20, 10, 20));

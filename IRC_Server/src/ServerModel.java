@@ -169,7 +169,7 @@ public class ServerModel {
     }
 
     /**
-     Ajoute un salon à la liste
+     Modifie le nombre de msg sauvegardé pour tout les salons
      */
     public void setNbMsg (Integer a){
 
@@ -193,8 +193,6 @@ public class ServerModel {
 
                 }
 
-                System.out.println(lastMsg);
-
             }
 
         }
@@ -205,7 +203,7 @@ public class ServerModel {
     }
 
     /**
-     Ajoute un salon à la liste
+     Retourne la liste des msg pour un salon donné en paramètre
      */
     public String getLastMsg (String salon){
 
@@ -221,21 +219,17 @@ public class ServerModel {
             msg=msg + st + "\n";
         }
 
-        System.out.println(msg);
-
         return msg;
     }
 
     /**
-     Ajoute un salon à la liste
+     Sauvegarde le dernier message d'un salon donné en paramètre
      */
     public void setLastMsg (String msg,String salon){
 
         ArrayList<String> lastMsg=(ArrayList<String>)lastMsgSalon.get(salon);
 
         if (lastMsg.size()>=nbMsg) {
-
-            System.out.println("Enter");
 
             for (int nb=0;nb<nbMsg-1;nb++){
                 lastMsg.set(nb,lastMsg.get(nb+1));
@@ -246,8 +240,6 @@ public class ServerModel {
         } else {
             lastMsg.add(msg);
         }
-        System.out.println(lastMsg.size());
-        System.out.println(lastMsg);
     }
 
     /**
@@ -265,7 +257,9 @@ public class ServerModel {
     }
 
     /**
-     Ajoute un salon à la liste
+     Supprime un client du modèle :
+        - Fermeture du socket channel
+        - Supp du client dans la liste des clients
      */
     public void deleteClients(ServerClients name) throws IOException {
         name.getSocketChannel().close();
@@ -273,7 +267,9 @@ public class ServerModel {
     }
 
     /**
-     Ajoute un salon à la liste
+     Supprime une liste de client du modèle :
+         - Fermeture du socket channel
+         - Supp du client dans la liste des clients
      */
     public void deleteClients(ArrayList<ServerClients> clientsList) throws IOException {
 
@@ -282,7 +278,6 @@ public class ServerModel {
         while(itr.hasNext()){
 
             ServerClients st=(ServerClients)itr.next();
-            System.out.println(st);
 
             st.getSocketChannel().close();
             itr.remove();
@@ -313,6 +308,10 @@ public class ServerModel {
         blackList.remove(ip);
     }
 
+    /**
+     Vérifie si le nom passé en paramètre est déja utilisé dans les clients connéctés
+     @return True si le nom n'existe pas et False sinon
+     */
     public boolean checkName(String name,SocketChannel chan){
 
         Iterator itr=clientsList.iterator();
@@ -331,6 +330,10 @@ public class ServerModel {
         return true;
     }
 
+    /**
+     Vérifie si le salon existe déjà :
+     @return True si le salon n'existe pas et False sinon
+     */
     public boolean checkSalon(String salon){
 
         Iterator itr=salonsList.iterator();
@@ -347,6 +350,10 @@ public class ServerModel {
         return true;
     }
 
+    /**
+     Vérifie si l'adresse ip est banni:
+     @return True si l'adresse n'est pas banni False sinon
+     */
     public boolean checkIpBlacklist(String ip){
 
         Iterator itr=blackList.iterator();
@@ -355,47 +362,12 @@ public class ServerModel {
 
             String st=(String)itr.next();
 
-            System.out.println(st);
-
             if(st.equals(ip)){
                 return false;
             }
         }
 
         return true;
-    }
-
-    public void setTimeout(Integer time){
-
-        Iterator itr=clientsList.iterator();
-
-        while(itr.hasNext()){
-
-            ServerClients st=(ServerClients)itr.next();
-
-            st.setTimeout(time);
-
-        }
-    }
-
-    public ArrayList<ServerClients> changeTimeout(){
-
-        ArrayList<ServerClients> clientsListTimeout=new ArrayList<ServerClients>();
-        Iterator itr=clientsList.iterator();
-
-        while(itr.hasNext()){
-
-            ServerClients st=(ServerClients)itr.next();
-
-            if(st.getTimeout()==0) {
-                clientsListTimeout.add(st);
-            } else {
-                st.setTimeout(st.getTimeout() - 1);
-            }
-
-        }
-
-        return clientsListTimeout;
     }
 
 }

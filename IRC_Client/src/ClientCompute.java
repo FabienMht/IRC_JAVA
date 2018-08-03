@@ -1,4 +1,6 @@
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -8,6 +10,9 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 
+/**
+ Classe qui permet de gérer les socketchannel à l'aide d 'un thread
+ */
 public class ClientCompute extends Thread {
 
     private ClientModel model;
@@ -18,6 +23,9 @@ public class ClientCompute extends Thread {
         this.gui=b;
     }
 
+    /**
+     Méthode run qui permet d'initialiser le selecteur et le socket channel
+     */
     public void run() {
 
         try {
@@ -37,7 +45,6 @@ public class ClientCompute extends Thread {
             while (model.getStop()) {
 
                 if (!clientSocket.isConnected()){
-                    System.out.println("Deco");
                     model.setStop(false);
                 }
 
@@ -58,7 +65,6 @@ public class ClientCompute extends Thread {
                         client.read(buffer);
 
                         String output = new String(buffer.array()).trim();
-                        System.out.println(output);
                         String[] outputSplit = output.split("¨");
 
                         for (String commande : outputSplit) {
@@ -75,7 +81,8 @@ public class ClientCompute extends Thread {
                                     model.setClients(s);
                                 }
 
-                                gui.majClient();
+                                majClient();
+
                             } else if (commande.startsWith("/listSalon", 0)) {
 
                                 String outputPrefix = new String(commande.replaceFirst("/listSalon", "")).trim();
@@ -86,7 +93,7 @@ public class ClientCompute extends Thread {
                                     model.setSalons(s);
                                 }
 
-                                gui.majSalon();
+                                majSalon();
 
                             } else if (commande.startsWith("/addClient", 0)) {
 
@@ -94,17 +101,21 @@ public class ClientCompute extends Thread {
 
                                 model.setClients(outputPrefix);
 
-                                gui.majClient();
+                                setTextMsg("Client ajouté : " + outputPrefix + "\n");
+
+                                majClient();
 
                             } else if (commande.startsWith("/updateClient", 0)) {
 
-                                String outputPrefix = new String(commande.replaceFirst("/addClient", "")).trim();
+                                String outputPrefix = new String(commande.replaceFirst("/updateClient", "")).trim();
 
                                 String[] split = outputPrefix.split(",", 2);
 
                                 model.updateNickname(split[0], split[1]);
 
-                                gui.majClient();
+                                setTextMsg("Client ancien nom : " + split[0] + " nouveau nom : " + split[1] + "\n");
+
+                                majClient();
 
                             } else if (commande.startsWith("/deleteClient", 0)) {
 
@@ -112,7 +123,9 @@ public class ClientCompute extends Thread {
 
                                 model.deleteClients(outputPrefix);
 
-                                gui.majClient();
+                                setTextMsg("Client supp : " + outputPrefix + "\n");
+
+                                majClient();
 
                             } else if (commande.startsWith("/addSalon", 0)) {
 
@@ -120,7 +133,9 @@ public class ClientCompute extends Thread {
 
                                 model.setSalons(outputPrefix);
 
-                                gui.majSalon();
+                                setTextMsg("Salon ajouté : " + outputPrefix + "\n");
+
+                                majSalon();
 
                             } else if (commande.startsWith("/deleteSalon", 0)) {
 
@@ -128,44 +143,33 @@ public class ClientCompute extends Thread {
 
                                 model.deleteSalons(outputPrefix);
 
-                                gui.majSalon();
+                                setTextMsg("Salon supp : " + outputPrefix + "\n");
+
+                                majSalon();
 
                             } else if (commande.startsWith("/erreur", 0)) {
 
                                 String outputPrefix = new String(commande.replaceFirst("/erreur", "")).trim();
 
-                                gui.setStatus(ClientGui.Status.Error, outputPrefix);
+                                setStatus(ClientGui.Status.Error, outputPrefix);
 
                             } else if (commande.startsWith("/quit", 0)) {
 
                                 String outputPrefix = new String(commande.replaceFirst("/quit", "")).trim();
 
-                                Platform.runLater(new Runnable() {
-                                    public void run() {
-                                        gui.setStatus(ClientGui.Status.Disconnected, outputPrefix);
-                                    }
-                                });
+                                setStatus(ClientGui.Status.Disconnected, outputPrefix);
 
                                 model.setStop(false);
 
                                 model.deleteAllClients();
                                 model.deleteAllSalons();
 
-                                gui.majClient();
-                                gui.majSalon();
-
-                                gui.getAreaMsg().clear();
-
-                                gui.getBoutton(0).setDisable(false);
-                                gui.getBoutton(1).setDisable(true);
-                                gui.getBoutton(2).setDisable(true);
-                                gui.getBoutton(3).setDisable(true);
+                                disconnect();
 
                             } else {
 
                                 String outputPrefix = new String(commande).trim();
-                                gui.setTextMsg(outputPrefix);
-                                gui.setTextMsg("\n");
+                                setTextMsg(outputPrefix + "\n");
                             }
                         }
 
@@ -181,28 +185,22 @@ public class ClientCompute extends Thread {
 
         } catch (Exception e) {
 
-            Platform.runLater(new Runnable() {
-                public void run() {
-                    gui.setStatus(ClientGui.Status.Error,"Connection refused");
-                }
-            });
-
-            gui.getBoutton(0).setDisable(false);
-            gui.getBoutton(1).setDisable(true);
-            gui.getBoutton(2).setDisable(true);
-            gui.getBoutton(3).setDisable(true);
+            setStatus(ClientGui.Status.Error,"Connection refused");
 
             model.deleteAllClients();
             model.deleteAllSalons();
 
-            gui.majClient();
-            gui.majSalon();
+            disconnect();
 
         }
     }
 
+    /**
+     Permet d'envoyer un msg à un client dont le socketchannel est donné en paramètre
+     */
     public static void sendMsg (String msg,SocketChannel client){
 
+        msg=msg+"¨";
         byte[] message = msg.getBytes();
         ByteBuffer bufferClient = ByteBuffer.wrap(message);
 
@@ -212,9 +210,78 @@ public class ClientCompute extends Thread {
             e.printStackTrace();
         }
 
-        System.out.println(msg);
-
         bufferClient.clear();
+    }
+
+    /**
+     Mets à jour la liste des clients.
+     */
+    public void majClient (){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+                gui.majClient();
+            }
+        });
+
+    }
+
+    /**
+     Mets à jour la liste des salons.
+     */
+    public void majSalon (){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+                gui.majSalon();
+            }
+        });
+
+    }
+
+    /**
+     Modifie le status de la GUI.
+     */
+    public void setStatus(ClientGui.Status status, String msg){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+                gui.setStatus(status,msg);
+            }
+        });
+    }
+
+    /**
+     Permet d'ajouter des msgs à l'écran.
+     */
+    public void setTextMsg(String a){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+                gui.setTextMsg(a);
+            }
+        });
+
+    }
+
+    public void disconnect (){
+
+        Platform.runLater(new Runnable() {
+            public void run() {
+
+                majClient();
+                majSalon();
+
+                gui.getAreaMsg().clear();
+
+                gui.getBoutton(0).setDisable(false);
+                gui.getBoutton(1).setDisable(true);
+                gui.getBoutton(2).setDisable(true);
+                gui.getBoutton(3).setDisable(true);
+            }
+        });
+
+
     }
 
 }

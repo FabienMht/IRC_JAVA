@@ -2,25 +2,30 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Optional;
 
+/**
+ Classe qui gère les interaction des utilisateurs avec la GUI.
+ */
 public class ClientController {
 
     private ClientGui gui;
     private ClientModel model;
     private Stage stage;
     private DateFormat df = new SimpleDateFormat("HH:mm:ss");
-    private Date date = new Date();
+    private Date date;
 
     public ClientController(ClientGui a, ClientModel b,Stage c){
         this.gui=a;
@@ -29,18 +34,34 @@ public class ClientController {
         initListenners();
     }
 
+    /**
+     Méthode qui permet l'écoute des actions sur les objets de la GUI.
+     */
     private void initListenners () {
 
-        // Action event.
-
+        /**
+         Permet d'éteindre le serveur en cas d'arret inatendu.
+         */
         stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             public void handle(WindowEvent we) {
 
                 if (gui.getBoutton(0).isDisable()) {
 
-                    ClientCompute.sendMsg("/quit", model.getClientSocket());
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Fermeture Client");
+                    alert.setHeaderText("");
+                    alert.setContentText("Etes-vous sur de déco le client");
 
-                    model.setStop(false);
+                    Optional<ButtonType> result = alert.showAndWait();
+
+                    if (result.get() == ButtonType.OK){
+
+                        ClientCompute.sendMsg("/quit", model.getClientSocket());
+
+                        model.setStop(false);
+
+                    }
+
                 }
 
             }
@@ -52,6 +73,9 @@ public class ClientController {
             }
         });
 
+        /**
+         Permet d'enregistrer le contenu des msgs du textarea dans un fichier.
+         */
         gui.getMenuItems(1).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
 
@@ -69,13 +93,19 @@ public class ClientController {
             }
         });
 
-        gui.getMenuItems(4).setOnAction(new EventHandler<ActionEvent>() {
+        gui.getMenuItems(2).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
 
                 gui.setLicenceWindow();
             }
         });
 
+        /**
+         Permet d'effectuer les actions au lors de la connexion au serveur.
+         - Vérification des inputs
+         - Création de l'objet compute qui gère les socketchannel
+         - Modification des boutons de la gui
+         */
         gui.getBoutton(0).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
 
@@ -85,6 +115,7 @@ public class ClientController {
                 gui.getTextField(0).setText("127.0.0.1");
                 gui.getTextField(1).setText("27001");
 
+                // Vérification du format de l'adresse IP
                 if(checkIPAddress(gui.getTextField(0).getText())){
                     Ip=gui.getTextField(0).getText();
                 } else {
@@ -92,6 +123,7 @@ public class ClientController {
                     return;
                 }
 
+                // Vérification du format du port
                 try {
                     if (Integer.parseInt(gui.getTextField(1).getText()) < 65635 && Integer.parseInt(gui.getTextField(1).getText()) > 1024) {
                         Port = Integer.parseInt(gui.getTextField(1).getText());
@@ -114,9 +146,11 @@ public class ClientController {
 
                 model.setSalonWork("Principal");
 
+                // Création de l'objet compute
                 ClientCompute compute=new ClientCompute(model,gui);
                 compute.start();
 
+                //Modification des boutons de la gui
                 gui.getBoutton(0).setDisable(true);
                 gui.getBoutton(1).setDisable(false);
                 gui.getBoutton(2).setDisable(false);
@@ -125,21 +159,27 @@ public class ClientController {
                 gui.majClient();
                 gui.majSalon();
 
-                gui.setStatus(ClientGui.Status.Connected,"Salon " + model.getSalonWork());
+                gui.setStatus(ClientGui.Status.Connected,"Salon " + model.getSalonWork() + " / Nickname " + model.getNickname());
 
             }
         });
 
+        /**
+         Permet d'effectuer les actions a la deconnexion du serveur.
+         */
         gui.getBoutton(1).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
                 disconnect();
             }
         });
 
+        /**
+         Permet de gérer les events lors de la création de salon.
+         */
         gui.getBoutton(2).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
                 if (!gui.getTextField(3).getText().equals("")) {
-                    checkSalon(gui.getTextField(3).getText());
+                    setSalon(gui.getTextField(3).getText());
                     gui.getTextField(3).clear();
                 }
             }
@@ -151,7 +191,7 @@ public class ClientController {
                 if(gui.getBoutton(0).isDisable()) {
                     if (ke.getCode().equals(KeyCode.ENTER)) {
                         if (!gui.getTextField(3).getText().equals("")) {
-                            checkSalon(gui.getTextField(3).getText());
+                            setSalon(gui.getTextField(3).getText());
                             gui.getTextField(3).clear();
                         }
                     }
@@ -159,10 +199,15 @@ public class ClientController {
             }
         });
 
+        /**
+         Permet de gérer les events lors de l'envoi de message.
+         */
         gui.getBoutton(3).setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent event) {
-                sendMsg();
-                gui.getTextField(4).clear();
+                if (!gui.getTextField(4).getText().equals("")) {
+                    sendMsg();
+                    gui.getTextField(4).clear();
+                }
             }
         });
 
@@ -171,23 +216,30 @@ public class ClientController {
             {
                 if(gui.getBoutton(0).isDisable()) {
                     if (ke.getCode().equals(KeyCode.ENTER)) {
-                        sendMsg();
-                        gui.getTextField(4).clear();
+                        if (!gui.getTextField(4).getText().equals("")) {
+                            sendMsg();
+                            gui.getTextField(4).clear();
+                        }
                     }
                 }
             }
         });
 
+        /**
+         Permet de gérer le changement de salon lors de la selection de celui-ci.
+         */
         gui.getListView(0).getSelectionModel().selectedItemProperty().addListener(new ChangeListener<String>() {
                     public void changed(ObservableValue<? extends String> ov, String old_val, String new_val) {
 
-                        if (new_val!=null) {
+
+
+                        if (new_val!=null && !model.getSalonWork().equals(new_val)) {
 
                             ClientCompute.sendMsg("/setSalon " + new_val, model.getClientSocket());
                             gui.getAreaMsg().clear();
 
                             model.setSalonWork(new_val);
-                            gui.setStatus(ClientGui.Status.Connected,"Salon " + model.getSalonWork());
+                            gui.setStatus(ClientGui.Status.Connected,"Salon " + model.getSalonWork() + " / Nickname " + model.getNickname());
 
                         }
 
@@ -195,6 +247,9 @@ public class ClientController {
                 });
     }
 
+    /**
+     Permet d'effectuer des traitements avant l'envoi de messages au serveur.
+     */
     public void sendMsg (){
 
         String msg=gui.getTextField(4).getText();
@@ -235,6 +290,8 @@ public class ClientController {
 
         } else {
 
+            date = new Date();
+
             ClientCompute.sendMsg(df.format(date) + " " + model.getNickname() + " : " + msg, model.getClientSocket());
 
             gui.setTextMsg(df.format(date) + " " + model.getNickname() + " : " + msg);
@@ -245,6 +302,13 @@ public class ClientController {
 
     }
 
+    /**
+     Permet d'effectuer les actions a la deconnexion du serveur.
+     - Déconnexion du client / Suppression des clients dans le model
+     - Suppression de tous les salons
+     - Arret du selecteur, socket channel
+     - Modification des boutons de la gui
+     */
     public void disconnect () {
 
         ClientCompute.sendMsg("/quit",model.getClientSocket());
@@ -268,6 +332,10 @@ public class ClientController {
 
     }
 
+    /**
+     Vérifie si une chaine de caractère est au format d'une adresse IP.
+     @return Vrai si format ok et faux sinon
+     */
     public boolean checkIPAddress( String ipAddress ) {
 
         String[] tokens = ipAddress.split("\\.");
@@ -286,9 +354,11 @@ public class ClientController {
         return true;
     }
 
-    public void checkSalon (String Salon){
+    /**
+     Permet d'ajouter un salon sur le serveur.
+     */
+    public void setSalon (String Salon){
 
-        model.setSalons(Salon);
         ClientCompute.sendMsg("/addSalon " + Salon,model.getClientSocket());
         gui.majSalon();
 

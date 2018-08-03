@@ -3,11 +3,15 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Optional;
+
+import javafx.scene.control.ButtonType;
 
 /**
  Classe qui gère les interaction des utilisateurs avec la GUI.
@@ -19,7 +23,6 @@ public class ServerController {
     private ServerLog log;
     private Stage stage;
     private ServerCompute compute;
-    private ServerTimeout timeout;
 
     public ServerController(ServerGui a, ServerModel b,Stage c,ServerLog d){
         this.gui=a;
@@ -42,18 +45,29 @@ public class ServerController {
 
                 if (gui.getBoutton(0).isDisable()) {
 
-                    compute.sendMsg("/quit", model.getClients());
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Fermeture Server");
+                    alert.setHeaderText("");
+                    alert.setContentText("Etes-vous sur de fermer le serveur");
 
-                    model.setStop(false);
+                    Optional<ButtonType> result = alert.showAndWait();
 
-                    try {
-                        model.deleteClients(model.getClients());
-                    } catch (Exception e) {
-                        log.setLogContent("Echec de deco des clients !", ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
-                        return;
+                    if (result.get() == ButtonType.OK){
+
+                        compute.sendMsg("/quit", model.getClients());
+
+                        model.setStop(false);
+
+                        try {
+                            model.deleteClients(model.getClients());
+                        } catch (Exception e) {
+                            log.setLogContent("Echec de deco des clients !", ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+                            return;
+                        }
+
+                        model.deleteAllSalons();
+
                     }
-
-                    model.deleteAllSalons();
                 }
 
             }
@@ -126,15 +140,6 @@ public class ServerController {
 
             public void changed(ObservableValue ov, String oldValue, String newValue) {
 
-                log.setLogContent("TimeOut : " + newValue, ServerLog.Level.WARNING, ServerLog.Facility.SERVER);
-                model.setTimeout(Integer.parseInt(newValue));
-            }
-        });
-
-        gui.getChoiceBox(2).valueProperty().addListener(new ChangeListener<String>() {
-
-            public void changed(ObservableValue ov, String oldValue, String newValue) {
-
                 log.setLogContent("Nombre de msg par salon : " + newValue, ServerLog.Level.INFO, ServerLog.Facility.SERVER);
                 model.setNbMsg(Integer.parseInt(newValue));
             }
@@ -182,9 +187,7 @@ public class ServerController {
 
                 // Création de l'objet compute
                 compute=new ServerCompute(log,model,gui);
-                timeout=new ServerTimeout(log,model,gui,compute);
                 compute.start();
-                timeout.start();
 
                 model.setSalons("Principal");
 
@@ -215,33 +218,45 @@ public class ServerController {
 
             public void handle(ActionEvent event) {
 
-                log.setLogContent("Arret du serveur",ServerLog.Level.WARNING,ServerLog.Facility.SERVER);
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Fermeture Server");
+                alert.setHeaderText("");
+                alert.setContentText("Etes-vous sur de fermer le serveur");
 
-                compute.sendMsg("/quit",model.getClients());
+                Optional<ButtonType> result = alert.showAndWait();
 
-                model.setStop(false);
+                if (result.get() == ButtonType.OK){
 
-                try {
-                    model.deleteClients(model.getClients());
-                } catch (Exception e) {
-                    log.setLogContent("Echec de deco des clients !", ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
-                    return;
+                    log.setLogContent("Arret du serveur",ServerLog.Level.WARNING,ServerLog.Facility.SERVER);
+
+                    compute.sendMsg("/quit",model.getClients());
+
+                    model.setStop(false);
+
+                    try {
+                        model.deleteClients(model.getClients());
+                    } catch (Exception e) {
+                        log.setLogContent("Echec de deco des clients !", ServerLog.Level.ERROR, ServerLog.Facility.SERVER);
+                        return;
+                    }
+
+                    model.deleteAllSalons();
+
+                    gui.majClientSalon();
+
+                    //Modification des boutons de la gui
+                    gui.getBoutton(0).setDisable(false);
+                    gui.getBoutton(1).setDisable(true);
+                    gui.getBoutton(2).setDisable(true);
+                    gui.getBoutton(3).setDisable(true);
+                    gui.getBoutton(4).setDisable(true);
+                    gui.getBoutton(5).setDisable(true);
+                    gui.getBoutton(6).setDisable(true);
+
+                    gui.setStatus(ServerLog.Status.Stop,"");
+
                 }
 
-                model.deleteAllSalons();
-
-                gui.majClientSalon();
-
-                //Modification des boutons de la gui
-                gui.getBoutton(0).setDisable(false);
-                gui.getBoutton(1).setDisable(true);
-                gui.getBoutton(2).setDisable(true);
-                gui.getBoutton(3).setDisable(true);
-                gui.getBoutton(4).setDisable(true);
-                gui.getBoutton(5).setDisable(true);
-                gui.getBoutton(6).setDisable(true);
-
-                gui.setStatus(ServerLog.Status.Stop,"");
             }
         });
 
