@@ -116,9 +116,6 @@ public class ClientController {
                 String Ip;
                 Integer Port;
 
-                gui.getTextField(0).setText("127.0.0.1");
-                gui.getTextField(1).setText("27001");
-
                 // Vérification du format de l'adresse IP
                 if(checkIPAddress(gui.getTextField(0).getText())){
                     Ip=gui.getTextField(0).getText();
